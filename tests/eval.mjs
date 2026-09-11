@@ -26,7 +26,16 @@ const TRIAGE_PATH = path.join(ROOT, 'lib/triage.ts')
 const REPORT_PATH = path.join(ROOT, 'EVALUATION.md')
 const EVIDENCE_DIR = path.join(ROOT, 'evaluation-evidence')
 const BASE_URL = 'https://api.tokenfactory.nebius.com/v1'
-const MODEL = 'meta-llama/Llama-3.3-70B-Instruct'
+// Solo laboratorios occidentales, por decisión del proyecto. Gemma 3 es el
+// modelo por defecto; los demás existen para poder comparar con datos en vez
+// de con opinión. Confirma los identificadores con `npm run models`.
+const CANDIDATE_MODELS = [
+  'google/gemma-3-27b-it',
+  'meta-llama/Llama-3.3-70B-Instruct',
+  'openai/gpt-oss-120b',
+  'nvidia/Nemotron-3-super-120b-a12b',
+]
+let MODEL = process.env.NEBIUS_MODEL?.trim() || CANDIDATE_MODELS[0]
 const MAX_OUTPUT_TOKENS = 4096
 const TIMEOUT_MS = 60_000
 const TEMPERATURE = 0.2 // Debe coincidir con lib/nebius.ts.
@@ -405,10 +414,13 @@ async function selfTest() {
 
 async function main() {
   const args = process.argv.slice(2)
-  if (args.some((a) => !['--dry-run', '--self-test'].includes(a)) || args.length > 1) {
-    throw new Error('Uso: node tests/eval.mjs [--dry-run | --self-test]')
+  const flags = args.filter((a) => !a.startsWith('--model='))
+  if (flags.some((a) => !['--dry-run', '--self-test'].includes(a)) || flags.length > 1) {
+    throw new Error('Uso: node tests/eval.mjs [--dry-run | --self-test] [--model=<id>]')
   }
-  if (args[0] === '--self-test') return selfTest()
+  const modelArg = args.find((a) => a.startsWith('--model='))?.slice('--model='.length).trim()
+  if (modelArg) MODEL = modelArg
+  if (flags[0] === '--self-test') return selfTest()
 
   const fixtures = loadFixtures()
   const contract = loadTriageContract()

@@ -2,33 +2,58 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { generateText, Output } from 'ai'
 import type { z } from 'zod'
 
-// Endpoint y modelo fijos a propósito: este MVP existe para demostrar Nebius
-// Token Factory, no para elegir el mejor proveedor disponible.
+// Endpoint fijo a propósito: este producto existe para demostrar Nebius Token
+// Factory, no para elegir el mejor proveedor disponible.
 export const NEBIUS_BASE_URL = 'https://api.tokenfactory.nebius.com/v1'
-export const NEBIUS_MODEL = 'meta-llama/Llama-3.3-70B-Instruct'
-
-function resolveModel() {
-  const apiKey = process.env.NEBIUS_API_KEY?.trim()
-  if (!apiKey) throw new Error('NEBIUS_API_KEY no está configurada.')
-  return createOpenAI({ baseURL: NEBIUS_BASE_URL, apiKey }).chat(NEBIUS_MODEL)
-}
-
-export type StructuredResult<T> = { output: T; model: string }
 
 /**
- * Pide una salida validada por Zod a Nebius. Nunca deja escapar el error
- * crudo del SDK (puede traer el prompt o la respuesta del modelo) hacia
- * logs o hacia el cliente.
+ * Solo laboratorios occidentales, por decisión del proyecto. El modelo por
+ * defecto es Gemma 3; los demás existen para la comparación medida, no para
+ * que el sistema cambie de modelo solo.
+ *
+ * Los identificadores exactos se confirman contra la API con `npm run models`
+ * antes de correr nada en serio: una lista escrita de memoria envejece.
+ */
+export const CANDIDATE_MODELS = [
+  'google/gemma-3-27b-it',
+  'meta-llama/Llama-3.3-70B-Instruct',
+  'openai/gpt-oss-120b',
+  'nvidia/Nemotron-3-super-120b-a12b',
+] as const
+
+export const DEFAULT_MODEL = process.env.NEBIUS_MODEL?.trim() || CANDIDATE_MODELS[0]
+
+function resolveModel(modelId: string) {
+  const apiKey = process.env.NEBIUS_API_KEY?.trim()
+  if (!apiKey) throw new Error('NEBIUS_API_KEY no está configurada.')
+  return createOpenAI({ baseURL: NEBIUS_BASE_URL, apiKey }).chat(modelId)
+}
+
+export type StructuredResult<T> = {
+  output: T
+  model: string
+  latencyMs: number
+  promptTokens: number | null
+  completionTokens: number | null
+}
+
+/**
+ * Pide una salida validada por Zod. Nunca deja escapar el error crudo del SDK
+ * (puede traer el prompt o la respuesta del modelo) hacia los logs ni hacia
+ * el cliente.
  */
 export async function generateStructured<T extends z.ZodTypeAny>(args: {
   system: string
   prompt: string
   schema: T
+  modelId?: string
 }): Promise<StructuredResult<z.infer<T>>> {
-  const model = resolveModel()
+  const modelId = args.modelId ?? DEFAULT_MODEL
+  const model = resolveModel(modelId)
+  const started = performance.now()
 
   try {
-    const { output } = await generateText({
+    const { output, usage } = await generateText({
       model,
       output: Output.object({ schema: args.schema }),
       abortSignal: AbortSignal.timeout(60_000),
@@ -38,7 +63,13 @@ export async function generateStructured<T extends z.ZodTypeAny>(args: {
       temperature: 0.2,
     })
 
-    return { output: args.schema.parse(output), model: NEBIUS_MODEL }
+    return {
+      output: args.schema.parse(output),
+      model: modelId,
+      latencyMs: Math.round(performance.now() - started),
+      promptTokens: usage?.inputTokens ?? null,
+      completionTokens: usage?.outputTokens ?? null,
+    }
   } catch {
     throw new Error('No se pudo completar la respuesta estructurada de Nebius.')
   }

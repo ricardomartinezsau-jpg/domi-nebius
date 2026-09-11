@@ -8,18 +8,23 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+    "migrate": "node tools/migrate.mjs",
+    "models": "node tools/models.mjs",
     "eval": "node tests/eval.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.65",
     "ai": "^7.0.93",
+    "better-auth": "^1.7.4",
     "next": "16.3.3",
+    "pg": "^8.23.0",
     "react": "^19",
     "react-dom": "^19",
     "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/node": "^24",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "typescript": "5.7.3"
