@@ -1,0 +1,50 @@
+[
+  {
+    "id": "case-01-adhd-paralysis",
+    "name": "Caso 1: Parálisis por análisis (multi-bandeja)",
+    "description": "Mente dispersa con 5 frentes abiertos a la vez. Requiere distribución en las 4 bandejas y un hook de activación.",
+    "rawDump": "Tengo mil cosas en la cabeza y no sé por dónde empezar: tengo que mandar la propuesta al cliente TechCorp, comprar leche y verduras porque el refri está vacío, sacar cita con el dentista por un dolor de muela, contestarle a Luis el WhatsApp de hace tres días y arreglar la fuga del lavabo.",
+    "expected": {
+      "traysPopulated": ["personalBienestar", "profesionalProductiva", "familiarDomestica", "socialComunitaria"]
+    }
+  },
+  {
+    "id": "case-02-hyperfocus-cave-trap",
+    "name": "Caso 2: Trampa de hiperfoco en actividad de cueva",
+    "description": "La persona quema horas en una actividad de baja tracción mientras evita algo urgente. El modelo debe señalar la trampa sin culpar.",
+    "rawDump": "Llevo 3 horas buscando la paleta de colores perfecta para mi nuevo dashboard en Notion y leyendo tutoriales de atajos de teclado, pero lo que de verdad me urge y me da pánico es mandar las 3 facturas vencidas a mis clientes y llamar al banco por el bloqueo de cuenta.",
+    "expected": {
+      "identifiedCaveTrap": true
+    }
+  },
+  {
+    "id": "case-03-dependency-chain",
+    "name": "Caso 3: Cadena de dependencias",
+    "description": "Tareas donde el desorden cognitivo confunde el orden. El modelo debe ordenar la secuencia real de prerrequisitos.",
+    "rawDump": "Quiero desplegar la nueva versión a producción, pero aún no he corrido las migraciones en staging, y para correr las migraciones necesito pedirle las credenciales a Juan que está en junta, y además tengo que avisarle al equipo por Slack antes de tocar nada.",
+    "expected": {
+      "orderedSequence": true,
+      "firstActionIsPrerequisite": true
+    }
+  },
+  {
+    "id": "case-04-microtask-breakdown",
+    "name": "Caso 4: Tarea monstruo que requiere micro-pasos",
+    "description": "Una tarea grande que detona evitación. El modelo debe desglosarla en acciones de menos de 10 minutos con un primer clic concreto.",
+    "rawDump": "Tengo que hacer la contabilidad y declaración mensual de impuestos de los últimos tres meses. Cada vez que pienso en eso me pongo a limpiar mi cuarto o ver videos en YouTube.",
+    "expected": {
+      "microTasksGenerated": true,
+      "maxMicroTaskMinutes": 10,
+      "hasPhysicalHook": true
+    }
+  },
+  {
+    "id": "case-05-struggle-case-burnout",
+    "name": "Caso 5: Caso de dificultad — colapso sensorial vs. deber externo",
+    "description": "Struggle case. La persona entra en parálisis por sobrecarga sensorial pero tiene un compromiso crítico. Sin aserciones automáticas duras: requiere revisión humana.",
+    "rawDump": "Estoy en parálisis total frente a la pantalla, mi cabeza va a mil por hora y siento que no puedo respirar bien, pero prometí entregar el reporte de ventas hoy a las 5pm y si no lo entrego quedo mal. Por otro lado quiero ponerme a investigar sobre acuarios marinos.",
+    "expected": {
+      "notes": "El modelo suele detectar la investigación de acuarios como actividad de cueva, pero puede sesgarse a empujar el reporte de ventas antes que la regulación del sistema nervioso de la persona. Ver docs/EVALUATION.md para el análisis de esta ejecución."
+    }
+  }
+]

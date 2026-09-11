@@ -1,0 +1,27 @@
+{
+  "name": "domi-nebius",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Domi Brain Dump Triage — MVP mínimo sobre Nebius Token Factory para Burning Tokens.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "eval": "node tests/eval.mjs"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^4.0.65",
+    "ai": "^7.0.93",
+    "next": "16.3.3",
+    "react": "^19",
+    "react-dom": "^19",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "5.7.3"
+  }
+}
