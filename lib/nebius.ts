@@ -18,7 +18,7 @@ export const CANDIDATE_MODELS = [
   'google/gemma-3-27b-it',
   'meta-llama/Llama-3.3-70B-Instruct',
   'openai/gpt-oss-120b',
-  'nvidia/Nemotron-3-super-120b-a12b',
+  'nvidia/nemotron-3-super-120b-a12b',
 ] as const
 
 export const DEFAULT_MODEL = process.env.NEBIUS_MODEL?.trim() || CANDIDATE_MODELS[0]
