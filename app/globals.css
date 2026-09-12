@@ -1,3 +1,26 @@
+/*
+ * Esta es la interfaz provisional retirada. No está en uso.
+ * No se reutilice ni se copie nada de aquí.
+ *
+ * ATENCIÓN: la interfaz está retirada, pero este CSS sigue importado por
+ * app/layout.tsx. Antes de que alguien borre este archivo algún día, hay que
+ * mover a app/flow.css estas tres dependencias de las pantallas vivas:
+ * - La regla universal box-sizing: border-box (flow.css no la tiene).
+ * - El interlineado base del body, line-height: 1.5 (flow.css no lo tiene).
+ * - El recuadro de foco de teclado para <a> y <textarea>: la regla general de
+ *   focus-visible de flow.css solo cubre button, select, input y summary.
+ *
+ * Borrar globals.css sin mover esas tres dependencias desmaqueta el sitio
+ * entero y deja sin foco visible a quien navega con teclado.
+ *
+ * Este archivo declara --font: 'Segoe UI', Arial, Helvetica, sans-serif,
+ * expresamente prohibida por el sistema de diseño. Hoy no se ve porque
+ * app/layout.tsx importa globals.css primero y flow.css después: flow.css
+ * gana y aplica Atkinson. Ese orden de importación es lo único que lo tapa.
+ * No se invierta el orden, no se corte el import de globals.css y no se borre
+ * este archivo antes de trasladar las tres dependencias indicadas.
+ */
+
 /* ===========================================================================
    La mesa libre — sistema de diseño de Domi
    ---------------------------------------------------------------------------
