@@ -19,7 +19,10 @@ referencia un producto privado más grande, pero no es una copia de él — ver
 
 ## Probarlo
 
-Sin cuenta, sin login: [URL de despliegue en Render — se agrega al desplegar].
+Sin cuenta, sin login: **https://domi-web.onrender.com**
+
+Es un plan básico de Render: si lleva rato sin usarse, la primera carga puede tardar unos
+segundos en despertar.
 
 ## Correrlo local
 
