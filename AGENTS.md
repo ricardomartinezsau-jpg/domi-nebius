@@ -40,23 +40,96 @@ pegar.
   otra, por qué esta métrica y no otra), vale la pena dejarla explícita en el código o en
   la documentación — no solo ejecutarla en silencio.
 
+## Quién hace qué
+
+Tres agentes trabajan en paralelo sobre los mismos archivos bajo la dirección de Ricardo.
+Los límites de abajo no son burocracia: cada uno se escribió después de que su ausencia
+costara tiempo real en este repositorio.
+
+### Arquitectura (Claude)
+
+**Decide y verifica.** Es dueña de los contratos —esquemas, límites del sistema, garantías
+formales, forma de los datos entre capas— y de comprobar que lo que el repositorio afirma
+sea cierto. Declara los trade-offs antes de que se conviertan en deuda.
+
+- Escribe código cuando fija una garantía: la fontanería de un contrato, un cerrojo, una
+  prueba que demuestra un riesgo concreto. No escribe el producto.
+- **No opera infraestructura.** No crea servicios, no pica botones en paneles, no
+  despliega. Diagnostica y entrega la instrucción exacta; ejecutarla es de ingeniería.
+- Puede rechazar un cambio por criterio de producto, aunque funcione.
+
+### Ingeniería (Codex)
+
+**Implementa y opera.** Construye el producto, ejecuta las migraciones, configura y
+despliega los servicios, corre las puertas de verificación.
+
+- Cierra cada etapa con un commit verificado. Dejar horas de trabajo sin guardar es un
+  fallo de proceso, no un descuido: sin punto de retorno no hay forma de volver atrás.
+- Si un cambio toca un contrato, lo propone en vez de aplicarlo.
+
+### Diseño (Antigravity)
+
+**Dirige el lenguaje visual y la interacción**, bajo decisión de Ricardo. Los prototipos
+aprobados en `diseno-ui/antigravity/` son la fuente; el código los traduce, no los
+reinterpreta. Una pantalla por pasada (ver más abajo).
+
+- Diseña también los estados que el sistema produce de verdad —espera larga, reintento,
+  resultado con fuentes, lo que quedó sin confirmar—, no solo el camino feliz.
+
+### Orquestación (Ricardo, HITL)
+
+Decide dirección, prioridad, gasto y todo lo irreversible o público. Reparte el trabajo
+entre los tres. No escribe código y no necesita leerlo para decidir.
+
+## Cómo se pasan el trabajo entre agentes (A2A)
+
+**Un traspaso sin estas cuatro cosas se devuelve, no se adivina:** qué cambió y dónde, qué
+contratos se tocaron, con qué se verificó, y qué queda abierto.
+
+**Nadie da por buena la bitácora de otro agente.** Que un agente diga que algo funciona no
+es evidencia; la evidencia es la salida de la herramienta. Esto ya falló aquí: una auditoría
+declaró correcta la correspondencia entre el código y la base de datos revisando un archivo
+de migración que nunca se había ejecutado. **Se verifica contra el sistema vivo, no contra
+el archivo.**
+
+**Antes de culpar al código, medir.** Un fallo intermitente puede venir del proveedor. La
+misma llamada a Nebius pasó de completar 1 de cada 4 veces a 4 de 4 sin tocar una línea.
+Repetir la llamada cuesta segundos; reescribir una capa por un bache ajeno cuesta horas.
+
+**Antes de publicar contra un sistema externo, comprobar su especificación.** Un blueprint
+declaró un tipo de servicio que Render no admite. El repositorio llevaba esa configuración
+publicada sin que nadie la hubiera contrastado con la documentación.
+
+**Desacuerdo entre agentes:** gana quien traiga la medición. Si ninguno la tiene, se mide
+antes de discutir. Si el desacuerdo es de criterio de producto y no de hecho, decide
+Ricardo, y la decisión se deja escrita aquí con su porqué.
+
+**Trabajo en paralelo:** dos agentes pueden avanzar a la vez si tocan archivos distintos
+(pantallas contra fontanería, por ejemplo). Quien entre segundo se pone al día con el
+historial antes de tocar nada.
+
 ## Matriz de decisión: qué se ejecuta solo y qué necesita luz verde
 
 **Ejecución autónoma (A2A / M2M):** instalar dependencias, correr `typecheck`, `build`,
-`eval --dry-run` / `eval --self-test`, mover o renombrar archivos dentro de este repo,
-formatear código, escribir documentación.
+`test`, `eval --dry-run` / `eval --self-test`, mover o renombrar archivos dentro de este
+repo, formatear código, escribir documentación, y commitear en una rama de trabajo.
 
 **Requiere decisión humana antes de avanzar (HITL):**
 - Cambiar el esquema Zod de `lib/triage.ts` (es el contrato del producto).
-- Cambiar de modelo, proveedor o endpoint de inferencia. Hoy: exclusivamente Nebius Token
-  Factory con `google/gemma-3-27b-it`, y solo modelos de laboratorios occidentales. No hay
-  fallback a otro proveedor a propósito, para que la integración con el patrocinador sea
-  inequívoca.
-- Correr `npm run eval` en modo real (consume la `NEBIUS_API_KEY` real y tiene costo,
-  aunque sea mínimo).
+- Cambiar de modelo, proveedor o endpoint de inferencia. El proveedor es exclusivamente
+  Nebius Token Factory y solo modelos de laboratorios occidentales; no hay fallback a otro
+  proveedor a propósito, para que la integración con el patrocinador sea inequívoca. Los
+  modelos vigentes y por qué son esos están en "Decisiones que ya se tomaron con datos".
+- Gastar dinero real sin haberlo pedido: `npm run eval` en modo real,
+  `tests/research.e2e.mjs --run` (consume Linkup, Nebius y escribe en la base), o una
+  tanda de mediciones comparando modelos.
+- Crear, reconfigurar o suspender servicios en Render, y cualquier despliegue.
 - Cualquier push a `main` (este repo es público y `main` es lo que un juez va a ver y
-  correr) y cualquier acción sobre el despliegue en Render.
+  correr).
 - Editar el texto de la ficha de postulación de la hackathon o publicar en redes.
+
+Una autorización vale para lo que se pidió, no para lo que venga después: "publica main"
+autoriza ese envío, no los siguientes.
 
 ## Protocolo de diagnóstico ("zoom-in") cuando algo falla
 
