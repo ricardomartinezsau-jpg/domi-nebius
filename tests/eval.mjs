@@ -27,6 +27,7 @@ import { Output } from 'ai'
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const FIXTURES_PATH = path.join(ROOT, 'tests/fixtures.json')
 const TRIAGE_PATH = path.join(ROOT, 'lib/triage.ts')
+const VERIFY_PATH = path.join(ROOT, 'lib/verify.ts')
 const REPORT_PATH = path.join(ROOT, 'EVALUATION.md')
 const EVIDENCE_DIR = path.join(ROOT, 'evaluation-evidence')
 const BASE_URL = 'https://api.tokenfactory.nebius.com/v1'
@@ -69,27 +70,51 @@ const fixtureSchema = z
   })
   .strict()
 
-function loadTriageContract() {
-  const source = fs.readFileSync(TRIAGE_PATH, 'utf8')
+/**
+ * Carga un módulo real del producto dentro de una sandbox. No se importa
+ * directamente para no depender de que el Node que corra esto sepa leer
+ * TypeScript, y para que el evaluador no pueda alcanzar la red por accidente.
+ */
+function loadModule(modulePath, requireImpl) {
+  const source = fs.readFileSync(modulePath, 'utf8')
   const compiled = ts.transpileModule(source, {
-    fileName: TRIAGE_PATH,
+    fileName: modulePath,
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
     reportDiagnostics: true,
   })
   if (compiled.diagnostics?.some((d) => d.category === ts.DiagnosticCategory.Error)) {
-    throw new Error('No se pudo transpilar lib/triage.ts. Ejecuta npm run typecheck primero.')
+    throw new Error(`No se pudo transpilar ${path.relative(ROOT, modulePath)}. Ejecuta npm run typecheck primero.`)
   }
   const module = { exports: {} }
-  function restrictedRequire(id) {
-    if (id === 'zod') return { z }
-    if (id === './nebius') return { generateStructured: async (args) => args }
-    throw new Error(`Import no permitido en el evaluador: ${id}`)
-  }
   vm.runInNewContext(
     compiled.outputText,
-    { module, exports: module.exports, require: restrictedRequire },
-    { filename: TRIAGE_PATH, timeout: 1000 },
+    { module, exports: module.exports, require: requireImpl },
+    { filename: modulePath, timeout: 1000 },
   )
+  return module.exports
+}
+
+/**
+ * Las mismas reglas duras que corren en producción antes de mostrar nada.
+ * Aquí se aplican a cada caso para que la rúbrica no dependa de que alguien
+ * lea el resultado a mano.
+ */
+function loadVerifyRules() {
+  const exported = loadModule(VERIFY_PATH, (id) => {
+    throw new Error(`Import no permitido en el evaluador: ${id}`)
+  })
+  if (typeof exported.verify !== 'function') throw new Error('lib/verify.ts no expone verify().')
+  return exported
+}
+
+function loadTriageContract() {
+  const module = {
+    exports: loadModule(TRIAGE_PATH, (id) => {
+      if (id === 'zod') return { z }
+      if (id === './nebius') return { generateStructured: async (args) => args }
+      throw new Error(`Import no permitido en el evaluador: ${id}`)
+    }),
+  }
   const { triageSchema, quickSchema, detailSchema, runQuickTriage, runDetailTriage } = module.exports
   if (!(triageSchema instanceof z.ZodType) || typeof runQuickTriage !== 'function' || typeof runDetailTriage !== 'function') {
     throw new Error('lib/triage.ts no expone el contrato esperado.')
@@ -118,6 +143,9 @@ async function toRequest(captured) {
   }
 }
 
+let verifyModule = null
+const rules = () => (verifyModule ??= loadVerifyRules())
+
 /** Rúbrica determinística: mismo criterio para todos, sin un segundo LLM de juez. */
 function assess(candidate, fixture, schema) {
   const parsed = schema.safeParse(candidate)
@@ -126,7 +154,7 @@ function assess(candidate, fixture, schema) {
     'Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada.',
   ]
   if (fixture.id === 'case-05-struggle-case-burnout') {
-    humanReview.push('Caso de dificultad: revisar si prioriza regular el cuerpo sobre la entrega. Las notas del fixture son hipótesis, no observaciones.')
+    humanReview.push('Caso de dificultad: la regla somatic-override se comprueba abajo; lo que queda a revisión humana es si la acción propuesta es adecuada para esta persona, no si regula el cuerpo.')
   }
   if (!parsed.success) {
     return { schemaValid: false, schemaIssues: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.code}`), checks: [], passed: false, output: null, humanReview }
@@ -134,6 +162,12 @@ function assess(candidate, fixture, schema) {
   const output = parsed.data
   const checks = []
   const check = (name, passed) => checks.push({ name, passed })
+
+  // Las reglas duras del producto, aplicadas tal cual: si esta evaluación pasa
+  // y la app no, o al revés, es que el evaluador dejó de medir lo que se sirve.
+  for (const rule of rules().verify(output, { rawDump: fixture.rawDump })) {
+    check(`Regla dura · ${rule.id}`, rule.passed)
+  }
 
   check('Hook de activación no vacío', Boolean(output.momentumMode.activationHook.trim()))
   check('Escudo de foco no vacío', Boolean(output.momentumMode.singleFocusShield.trim()))
@@ -382,8 +416,11 @@ Revisión humana pendiente: ${(a?.humanReview ?? ['No hubo salida válida evalua
 salga mal: es que el modelo empuje la entrega por encima del estado de la persona. Por eso
 existe una regla determinística fuera del modelo (\`somatic-override\` en \`lib/verify.ts\`)
 que rechaza el resultado si detecta señales de colapso físico y el arranque no regula el
-cuerpo primero. El resultado completo de cada corrida queda en la evidencia para revisión
-humana.
+cuerpo primero. Esa regla corre en los dos sitios: en esta rúbrica, como una comprobación
+más de cada caso, y en \`app/api/triage/route.ts\` antes de que la persona vea nada. Si el
+modelo insiste tras un intento de corrección, el arranque lo sustituye un texto fijo escrito
+a mano: la garantía no depende de que el modelo obedezca. El resultado completo de cada
+corrida queda en la evidencia para revisión humana.
 
 ## Límites y reproducción
 

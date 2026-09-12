@@ -1,4 +1,4 @@
-import type { TriageOutput } from './triage'
+import type { DetailOutput, QuickOutput, TriageOutput } from './triage'
 
 /**
  * Reglas duras que se aplican DESPUÉS del modelo y ANTES de mostrarle algo a la
@@ -9,6 +9,10 @@ import type { TriageOutput } from './triage'
  * Son crudas y lo sabemos: detectan por palabras, así que dejan pasar casos
  * escritos de forma indirecta. Preferimos una regla que falle de forma
  * predecible y visible a una que falle de forma interesante.
+ *
+ * Se aplican por fase porque el producto responde por fases: la regla del
+ * arranque no puede esperar al plan completo, que es justo lo que la persona
+ * todavía no tiene delante.
  */
 
 export type Rule = { id: string; passed: boolean; detail: string; repairable: boolean }
@@ -31,76 +35,104 @@ const matchesAny = (text: string, patterns: RegExp[]) => patterns.some((p) => p.
 
 export type VerifyContext = {
   rawDump: string
-  currentTools: string[]
+  /** Herramientas que la persona ya dijo que usa. Vacío mientras no haya perfil. */
+  currentTools?: string[]
   /** Pasos que fueron reescritos con información de internet, y su fuente. */
-  groundedStepKeys: Map<string, { url: string } | null>
+  groundedStepKeys?: Map<string, { url: string } | null>
 }
 
-export function verify(output: TriageOutput, ctx: VerifyContext): Rule[] {
+const TRAY_KEYS = /personalBienestar|profesionalProductiva|familiarDomestica|socialComunitaria/
+
+/**
+ * Higiene del texto que la persona lee. Los tres defectos aparecieron en
+ * pruebas reales y los tres delatan la costura de la máquina.
+ */
+function textRules(userFacing: string[]): Rule[] {
+  const add = (id: string, passed: boolean, detail: string): Rule => ({ id, passed, detail, repairable: true })
+  return [
+    add('no-schema-leak', !userFacing.some((text) => TRAY_KEYS.test(text)), 'El texto visible no puede contener los nombres internos de las bandejas.'),
+    add('no-markup', !userFacing.some((text) => /\*|_{2,}|#{1,6}\s/.test(text)), 'El texto visible no lleva asteriscos ni marcas de formato: se lee tal cual.'),
+    add('no-shouting', !userFacing.some((text) => /\b[A-ZÁÉÍÓÚÑ]{4,}\b/.test(text)), 'Nada en mayúsculas sostenidas: a alguien saturado le suena a grito.'),
+  ]
+}
+
+/**
+ * Fase rápida. Es la que corre contra el reloj: la persona está mirando la
+ * pantalla. La regla `somatic-override` vive aquí porque el arranque es lo
+ * único que ve antes de actuar.
+ */
+export function verifyQuick(quick: QuickOutput, ctx: VerifyContext): Rule[] {
   const rules: Rule[] = []
   const add = (id: string, passed: boolean, detail: string, repairable = true) =>
     rules.push({ id, passed, detail, repairable })
 
-  // 1. La regla que arregla el caso de dificultad documentado: cuando el texto
-  // trae señales de crisis fisiológica, el arranque NO puede ser una entrega de
-  // trabajo. Primero se regula el cuerpo; el compromiso sigue existiendo después.
-  const inDistress = matchesAny(ctx.rawDump, DISTRESS_PATTERNS)
-  if (inDistress) {
+  // Cuando el texto trae señales de crisis fisiológica, el arranque NO puede
+  // ser una entrega de trabajo. Primero se regula el cuerpo; el compromiso
+  // sigue existiendo después.
+  if (matchesAny(ctx.rawDump, DISTRESS_PATTERNS)) {
     add(
       'somatic-override',
-      matchesAny(output.momentumMode.activationHook, SOMATIC_PATTERNS),
+      matchesAny(quick.momentumMode.activationHook, SOMATIC_PATTERNS),
       'Hay señales de colapso físico en el vaciado: el primer paso debe regular el cuerpo (respirar, agua, aire) antes de cualquier entrega.',
     )
   }
 
-  // 2. El texto que lee la persona no puede traer restos del sistema: nombres
-  // internos de campos, asteriscos de formato, ni mayúsculas de grito. Los tres
-  // aparecieron en pruebas reales y los tres delatan la costura de la máquina.
-  const userFacing = [
-    output.momentumMode.activationHook,
-    output.momentumMode.singleFocusShield,
-    ...output.momentumMode.antiDopamineTraps.flatMap((trap) => [trap.activity, trap.warning]),
-    ...output.microTasks.flatMap((group) => group.atomicSteps.flatMap((step) => [step.stepTitle, step.actionableHook])),
-  ]
-  const TRAY_KEYS = /personalBienestar|profesionalProductiva|familiarDomestica|socialComunitaria/
-  add('no-schema-leak', !userFacing.some((text) => TRAY_KEYS.test(text)), 'El texto visible no puede contener los nombres internos de las bandejas.')
-  add('no-markup', !userFacing.some((text) => /\*|_{2,}|#{1,6}\s/.test(text)), 'El texto visible no lleva asteriscos ni marcas de formato: se lee tal cual.')
-  add('no-shouting', !userFacing.some((text) => /\b[A-ZÁÉÍÓÚÑ]{4,}\b/.test(text)), 'Nada en mayúsculas sostenidas: a alguien saturado le suena a grito.')
-  add('hook-is-one-action', output.momentumMode.activationHook.trim().length <= 140, 'El arranque es una sola frase de menos de 140 caracteres.')
+  rules.push(...textRules([
+    quick.momentumMode.activationHook,
+    quick.momentumMode.singleFocusShield,
+    ...quick.momentumMode.antiDopamineTraps.flatMap((trap) => [trap.activity, trap.warning]),
+  ]))
 
-  // 3. Cada tarea grande tiene que quedar realmente partida.
+  add('hook-is-one-action', quick.momentumMode.activationHook.trim().length <= 140, 'El arranque es una sola frase de menos de 140 caracteres.')
+  add('hook-not-empty', quick.momentumMode.activationHook.trim().length > 0, 'El arranque no puede llegar vacío.', false)
+
+  return rules
+}
+
+/**
+ * Fase de detalle. Llega cuando la persona ya arrancó, así que aquí sí se puede
+ * pagar una reparación sin dejarla esperando frente a una pantalla en blanco.
+ */
+export function verifyDetail(detail: DetailOutput, ctx: VerifyContext): Rule[] {
+  const rules: Rule[] = []
+  const add = (id: string, passed: boolean, message: string, repairable = true) =>
+    rules.push({ id, passed, detail: message, repairable })
+
+  rules.push(...textRules(detail.microTasks.flatMap((group) => group.atomicSteps.flatMap((step) => [step.stepTitle, step.actionableHook]))))
+
+  // Cada tarea grande tiene que quedar realmente partida.
   add(
     'micro-steps-present',
-    output.microTasks.every((group) => group.atomicSteps.length > 0),
+    detail.microTasks.every((group) => group.atomicSteps.length > 0),
     'Toda tarea descompuesta debe tener al menos un micro-paso.',
   )
 
-  // 3. El primer paso de la secuencia no puede depender de algo pendiente:
-  // si depende, no es un punto de partida, y la persona se vuelve a trabar.
-  if (output.dependencyOrder.length) {
+  // El primer paso de la secuencia no puede depender de algo pendiente: si
+  // depende, no es un punto de partida, y la persona se vuelve a trabar.
+  if (detail.dependencyOrder.length) {
     add(
       'first-step-startable',
-      output.dependencyOrder[0].dependsOn.length === 0,
+      detail.dependencyOrder[0].dependsOn.length === 0,
       'El primer paso de la secuencia no puede tener prerrequisitos sin resolver.',
     )
     add(
       'sequence-numbered',
-      output.dependencyOrder.every((step, index) => step.step === index + 1),
+      detail.dependencyOrder.every((step, index) => step.step === index + 1),
       'La secuencia debe ir numerada de 1 a N sin saltos.',
     )
   }
 
-  // 4. Cada micro-paso trae un primer movimiento concreto: sin eso, vuelve a
-  // ser una instrucción abstracta, que es justo lo que paraliza.
+  // Cada micro-paso trae un primer movimiento concreto: sin eso, vuelve a ser
+  // una instrucción abstracta, que es justo lo que paraliza.
   add(
     'hooks-concrete',
-    output.microTasks.every((group) => group.atomicSteps.every((step) => step.actionableHook.trim().length >= 10)),
+    detail.microTasks.every((group) => group.atomicSteps.every((step) => step.actionableHook.trim().length >= 10)),
     'Cada micro-paso necesita un primer clic o movimiento concreto.',
   )
 
-  // 5. Nada traído de internet se muestra sin fuente. Esta no es reparable
+  // Nada traído de internet se muestra sin fuente. Esta no es reparable
   // pidiéndole otra vez al modelo: si no hay fuente, el dato se cae.
-  const unsourced = [...ctx.groundedStepKeys.entries()].filter(([, source]) => !source?.url)
+  const unsourced = [...(ctx.groundedStepKeys ?? new Map()).entries()].filter(([, source]) => !source?.url)
   add(
     'grounded-has-source',
     unsourced.length === 0,
@@ -108,14 +140,15 @@ export function verify(output: TriageOutput, ctx: VerifyContext): Rule[] {
     false,
   )
 
-  // 6. No recomendar una herramienta que la persona ya dijo que usa: rompe la
+  // No recomendar una herramienta que la persona ya dijo que usa: rompe la
   // única ilusión que sostiene el producto, la de que la conoce.
-  if (ctx.currentTools.length) {
-    const allText = output.microTasks
+  const currentTools = ctx.currentTools ?? []
+  if (currentTools.length) {
+    const allText = detail.microTasks
       .flatMap((group) => group.atomicSteps.map((step) => `${step.stepTitle} ${step.actionableHook}`))
       .join(' ')
       .toLowerCase()
-    const redundant = ctx.currentTools.filter((tool) => {
+    const redundant = currentTools.filter((tool) => {
       const normalized = tool.trim().toLowerCase()
       return normalized.length > 2 && new RegExp(`\\b(instala|descarga|crea una cuenta en|prueba)\\b[^.]*${normalized}`, 'i').test(allText)
     })
@@ -129,7 +162,22 @@ export function verify(output: TriageOutput, ctx: VerifyContext): Rule[] {
   return rules
 }
 
+/** Las dos fases juntas: es lo que evalúa `tests/eval.mjs` sobre una corrida completa. */
+export function verify(output: TriageOutput, ctx: VerifyContext): Rule[] {
+  return [...verifyQuick(output, ctx), ...verifyDetail(output, ctx)]
+}
+
 export const failures = (rules: Rule[]) => rules.filter((rule) => !rule.passed)
+
+/**
+ * Último recurso cuando el modelo insiste en un arranque inseguro. No es una
+ * frase "generada": está escrita aquí, cualquiera puede leerla, y por eso la
+ * garantía no depende de que el modelo obedezca.
+ */
+export const SAFE_SOMATIC_HOOK: Record<'es' | 'en', string> = {
+  es: 'Antes de nada: tres respiraciones lentas y un vaso de agua. Lo demás sigue ahí en cinco minutos.',
+  en: 'Before anything else: three slow breaths and a glass of water. The rest will still be there in five minutes.',
+}
 
 /** Texto que se le devuelve al modelo en el único intento de reparación. */
 export function repairInstruction(rules: Rule[]): string {

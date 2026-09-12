@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "migrate": "node tools/migrate.mjs",
     "models": "node tools/models.mjs",
-    "eval": "node tests/eval.mjs"
+    "eval": "node tests/eval.mjs",
+    "test": "node --test tests/session.test.mjs tests/guardrails.test.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.65",

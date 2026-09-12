@@ -150,25 +150,34 @@ function userPrompt(ctx: TriageContext, isEn: boolean): string {
   return `${head}${memoryBlock(ctx, isEn)}\n\n${body}\n"""\n${ctx.rawDump}\n"""`
 }
 
-export async function runQuickTriage(ctx: TriageContext, modelId?: string) {
+/**
+ * `repair` es el único reintento que se permite: el texto que devuelve
+ * `lib/verify.ts` cuando una regla dura falló. No cambia el contrato ni el
+ * prompt base, solo añade la corrección pedida.
+ */
+export type TriageOptions = { modelId?: string; repair?: string }
+
+const repairBlock = (repair?: string) => (repair ? `\n\n${repair}` : '')
+
+export async function runQuickTriage(ctx: TriageContext, opts: TriageOptions = {}) {
   const isEn = ctx.locale === 'en'
   return generateStructured({
     system: isEn ? QUICK_EN : QUICK_ES,
-    prompt: userPrompt(ctx, isEn),
+    prompt: userPrompt(ctx, isEn) + repairBlock(opts.repair),
     schema: quickSchema,
-    modelId,
+    modelId: opts.modelId,
   })
 }
 
-export async function runDetailTriage(ctx: TriageContext, quick: QuickOutput, modelId?: string) {
+export async function runDetailTriage(ctx: TriageContext, quick: QuickOutput, opts: TriageOptions = {}) {
   const isEn = ctx.locale === 'en'
   const decided = isEn
     ? `\n\nALREADY DECIDED — starting hook: ${quick.momentumMode.activationHook}`
     : `\n\nYA DECIDIDO — arranque: ${quick.momentumMode.activationHook}`
   return generateStructured({
     system: isEn ? DETAIL_EN : DETAIL_ES,
-    prompt: userPrompt(ctx, isEn) + decided,
+    prompt: userPrompt(ctx, isEn) + decided + repairBlock(opts.repair),
     schema: detailSchema,
-    modelId,
+    modelId: opts.modelId,
   })
 }
