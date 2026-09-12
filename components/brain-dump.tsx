@@ -1,3 +1,8 @@
+/*
+ * Esta es la interfaz provisional retirada. No está en uso.
+ * No se reutilice ni se copie nada de aquí.
+ */
+
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'

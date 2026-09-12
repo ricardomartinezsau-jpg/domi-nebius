@@ -1,18 +1,38 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowRight, Mic, Square } from 'lucide-react'
+import { ArrowRight, Check, Clock, List, MessageSquare, Mic, Square, X } from 'lucide-react'
 import { quickResultSchema } from '@/lib/session'
 import type { QuickOutput } from '@/lib/triage'
 import { Brand } from './brand'
 
 type Props = { initialText: string; onDraft: (text: string) => void; onResult: (quick: QuickOutput, raw: string) => void; onBack: () => void; hasTasks: boolean }
 
+const MAX_LENGTH = 4000
+const SUGGESTIONS = [
+  { label: 'Una conversación pendiente...', text: 'Hay una conversación pendiente con', icon: MessageSquare },
+  { label: 'Algo que me preocupa...', text: 'Tengo atorado resolver', icon: Clock },
+  { label: 'Cargas acumuladas...', text: 'Siento que tengo que hacer mil cosas hoy, en especial', icon: List },
+]
+
+function composeText(pills: string[], text: string) {
+  const prefix = pills.join('. ')
+  const typed = text.trim()
+  return (prefix && typed ? `${prefix}: ${typed}` : prefix || typed).slice(0, MAX_LENGTH)
+}
+
+function fieldCapacity(pills: string[]) {
+  // Reserve both the pill separators and ": " before any free text.
+  return MAX_LENGTH - (pills.length ? pills.join('. ').length + 2 : 0)
+}
+
 /** Production version of Antigravity's screen 01; no simulated speech or fake results. */
 export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Props) {
-  const [text, setText] = useState(initialText)
+  const [text, setText] = useState(initialText.slice(0, MAX_LENGTH))
+  const [pills, setPills] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [hint, setHint] = useState('')
   const [listening, setListening] = useState(false)
   const [supported, setSupported] = useState(true)
   const [modifier, setModifier] = useState('Ctrl')
@@ -21,9 +41,14 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
   const request = useRef<AbortController | null>(null)
   const sending = useRef(false)
   const textRef = useRef(text)
+  const pillsRef = useRef(pills)
   textRef.current = text
+  pillsRef.current = pills
+  const maxTextLength = fieldCapacity(pills)
+  const fullText = composeText(pills, text)
 
-  useEffect(() => { onDraft(text) }, [text, onDraft])
+  // Pills are transient UI; the existing draft contract stores only composed text.
+  useEffect(() => { onDraft(fullText) }, [fullText, onDraft])
   useEffect(() => {
     setSupported(Boolean(window.SpeechRecognition ?? window.webkitSpeechRecognition))
     setModifier(/Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl')
@@ -46,6 +71,7 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
     if (!Recognition) { setSupported(false); return }
     if (!window.isSecureContext) { setError('El dictado necesita HTTPS o localhost. Puedes escribir tu lista.'); return }
     setError('')
+    setHint('')
     const base = textRef.current.trim()
     try {
       const recognition = new Recognition()
@@ -57,7 +83,7 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
       recognition.onresult = (event) => {
         const phrases: string[] = []
         for (let i = 0; i < event.results.length; i++) phrases.push(event.results[i][0].transcript)
-        const next = `${base}${base ? '\n' : ''}${phrases.join(' ').trim()}`.slice(0, 4000)
+        const next = `${base}${base ? '\n' : ''}${phrases.join(' ').trim()}`.slice(0, fieldCapacity(pillsRef.current))
         textRef.current = next
         setText(next)
       }
@@ -72,39 +98,42 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
     } catch { stop(); setError('No se pudo abrir el micrófono. Puedes escribir tu lista.') }
   }
 
-  const [pills, setPills] = useState<string[]>([])
-
-  const SUGGESTIONS = [
-    'Hay una conversación pendiente con…',
-    'Tengo que enviar…',
-    'Pagar el servicio de…',
-    'Pendiente de la casa: ',
-  ]
-
-  const removePill = (indexToRemove: number) => {
-    setPills(prev => prev.filter((_, i) => i !== indexToRemove))
+  function removePill(indexToRemove: number) {
+    if (sending.current || speech.current) return
+    const next = pillsRef.current.filter((_, i) => i !== indexToRemove)
+    pillsRef.current = next
+    setPills(next)
+    setHint('')
+    field.current?.focus()
   }
 
-  const addPill = (suggestion: string) => {
-    if (!pills.includes(suggestion)) {
-      setPills(prev => [...prev, suggestion])
+  function addPill(suggestion: string) {
+    if (sending.current || speech.current) return
+    if (!pillsRef.current.includes(suggestion)) {
+      const next = [...pillsRef.current, suggestion]
+      // Never discard an existing thought to make room for a suggestion.
+      if (textRef.current.length > fieldCapacity(next)) {
+        setHint('Tu texto sigue completo. Para añadir esta sugerencia, deja un poco de espacio o continúa con lo escrito.')
+        field.current?.focus()
+        return
+      }
+      pillsRef.current = next
+      setPills(next)
     }
-  }
-
-  const getFullText = () => {
-    const parts = [...pills, textRef.current.trim()].filter(Boolean)
-    return parts.join('\n')
+    setHint('')
+    field.current?.focus()
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     if (sending.current) return
-    const raw = getFullText().trim()
-    if (!raw) { setError('Puedes empezar con un solo pendiente.'); field.current?.focus(); return }
+    const raw = composeText(pillsRef.current, textRef.current).slice(0, MAX_LENGTH)
+    if (!raw) { setHint('Puedes empezar con un solo pendiente.'); field.current?.focus(); return }
     stop()
     sending.current = true
     setBusy(true)
     setError('')
+    setHint('')
     const controller = new AbortController()
     request.current = controller
     const timeout = setTimeout(() => controller.abort(), 135_000)
@@ -122,66 +151,54 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
   return <div className="domi-shell capture-shell">
     <header className="domi-header">
       <Brand />
-      {hasTasks && <button className="quiet" onClick={onBack} disabled={busy}>Mis bandejas</button>}
+      {hasTasks ? <button className="quiet" onClick={onBack} disabled={busy}>Mis pendientes</button> : <span className="capture-badge">La mesa libre</span>}
     </header>
     <main className="capture-main">
       <form onSubmit={submit} aria-labelledby="capture-title">
-        <h1 id="capture-title">Dime tus pendientes.</h1>
-        <p className="intro">Tal como los tienes, sin ordenar nada.<br />Puedes escribirlos o contármelos.</p>
-        
-        {/* Chips de sugerencia rápida para detonar ideas */}
+        <h1 id="capture-title">Suelta lo que traes<br />en la cabeza.</h1>
+        <p className="intro">Escríbelo o cuéntamelo como te salga. Sin orden, sin juzgar; luego decidimos qué merece espacio.</p>
+
         <div className="domi-prompts-bar" aria-label="Sugerencias rápidas">
-          {SUGGESTIONS.map((sug, i) => (
-            <button
-              key={i}
-              type="button"
-              className="domi-chip"
-              disabled={busy}
-              onClick={() => addPill(sug)}
-            >
-              <span>+</span> {sug}
+          {SUGGESTIONS.map(({ label, text: suggestion, icon: Icon }) => (
+            <button key={suggestion} type="button" className="domi-chip" disabled={busy || listening} aria-pressed={pills.includes(suggestion)} onClick={() => addPill(suggestion)}>
+              <Icon size={12} aria-hidden="true" /> {label}
             </button>
           ))}
         </div>
 
         <div className="capture-canvas">
-          <div className="field-label-group">
-            <label className="field-label" htmlFor="capture-text">Tu lista, como salga</label>
+          <div className="capture-input-wrap">
+            <label className="capture-label" htmlFor="capture-text">¿Qué tienes en la cabeza?</label>
+            {pills.length > 0 && (
+              <div className="domi-input-pills-container" aria-label="Sugerencias activas">
+                {pills.map((pill, index) => (
+                  <span key={pill} className="domi-input-pill">
+                    <span className="domi-input-pill-text">{pill}</span>
+                    <button type="button" className="domi-pill-remove-btn" disabled={busy || listening} onClick={() => removePill(index)} aria-label={`Eliminar sugerencia ${pill}`} title="Eliminar sugerencia">
+                      <X size={12} aria-hidden="true" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <textarea
+              id="capture-text"
+              ref={field}
+              value={text}
+              rows={5}
+              maxLength={maxTextLength}
+              disabled={busy}
+              readOnly={listening}
+              placeholder={pills.length > 0 ? 'Continúa tu pensamiento aquí...' : '¿Qué tienes en la cabeza? Deja caer tareas, compromisos o pensamientos sueltos...'}
+              aria-describedby="capture-help"
+              onChange={event => { const next = event.target.value.slice(0, maxTextLength); textRef.current = next; setText(next); setError(''); setHint('') }}
+              onKeyDown={event => {
+                if (event.nativeEvent.isComposing) return
+                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); event.currentTarget.form?.requestSubmit() }
+                if (event.key === 'Backspace' && !textRef.current && pillsRef.current.length && !listening && !busy) { event.preventDefault(); removePill(pillsRef.current.length - 1) }
+              }}
+            />
           </div>
-
-          {/* Pastillas añadidas al lienzo con botón 'x' para eliminar en 1 clic */}
-          {pills.length > 0 && (
-            <div className="domi-input-pills-container" aria-label="Sugerencias activas">
-              {pills.map((pill, index) => (
-                <span key={index} className="domi-input-pill">
-                  <span className="domi-input-pill-text">{pill}</span>
-                  <button
-                    type="button"
-                    className="domi-pill-remove-btn"
-                    onClick={() => removePill(index)}
-                    aria-label={`Eliminar sugerencia ${pill}`}
-                    title="Eliminar sugerencia"
-                  >
-                    ✕
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          <textarea
-            id="capture-text"
-            ref={field}
-            value={text}
-            rows={5}
-            maxLength={4000}
-            disabled={busy}
-            readOnly={listening}
-            placeholder={pills.length > 0 ? "Escribe aquí los detalles del pendiente..." : "Tengo que responder a Ana, pagar la luz, comprar café…"}
-            aria-describedby="capture-help"
-            onChange={event => { textRef.current = event.target.value; setText(event.target.value); setError('') }}
-            onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit() } }}
-          />
 
           {listening && (
             <div className="voice-panel" role="status">
@@ -197,8 +214,8 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
           )}
 
           <div className="capture-footer">
-            <span id="capture-help">
-              {text.length >= 3800 ? `${4000 - text.length} caracteres disponibles` : 'No necesitas una lista perfecta.'}
+            <span id="capture-help" className="capture-reassurance" role="status">
+              {fullText.length > 80 ? <><Check size={15} aria-hidden="true" /><span><strong>{fullText.split(/\s+/).length} palabras</strong> · La mesa sostiene todo lo que pongas</span></> : fullText.length ? 'Sigue escribiendo sin ordenar. Domi te ayuda después.' : <><Clock size={15} aria-hidden="true" /><span>Tómate tu tiempo. No hay límite.</span></>}
             </span>
             <span className="shortcut"><kbd>{modifier}</kbd> + <kbd>Enter</kbd></span>
           </div>
@@ -216,9 +233,10 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
 
         {!supported && <p className="meta">El dictado no está disponible en este navegador. Puedes escribir.</p>}
         {busy && <p className="loading-line" role="status">Domi está repartiendo tus pendientes en las cuatro bandejas…</p>}
+        {hint && <p className="meta" role="status">{hint}</p>}
         {error && <p className="error" role="alert">{error}</p>}
       </form>
     </main>
-    <footer className="app-footer">Tu avance se conserva en este navegador.</footer>
+    <footer className="app-footer capture-manifesto"><span className="capture-footer-dot" aria-hidden="true" /><span>Primero alivio, después capacidad de actuar. Nunca examen.</span></footer>
   </div>
 }

@@ -18,8 +18,10 @@ h2 { font-size:24px; line-height:1.2; letter-spacing:-.5px; margin:0; }
 p { line-height:1.6; }
 .domi-shell { margin:0 auto; padding:32px 24px 36px; min-height:100svh; }
 .domi-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:40px; }
-.domi-brand { display:inline-flex; align-items:center; gap:10px; font-weight:700; font-size:21px; line-height:1; letter-spacing:-.5px; }
-.domi-brand svg { color:var(--domi-blue); }
+.domi-brand { display:inline-flex; align-items:center; gap:10px; line-height:1; }
+.domi-symbol-svg { width:32px; height:20px; flex-shrink:0; color:var(--domi-blue); }
+.domi-wordmark { height:20px; width:auto; flex-shrink:0; color:var(--ink); }
+.dominio-page .domi-wordmark { color:#f5f5ef; }
 .badge { background:#dfe7f4; color:#344365; border-radius:20px; padding:5px 12px; font-size:13px; }
 .intro { color:var(--domi-muted); font-size:18px; margin:14px 0 28px; }
 .primary,.secondary,.hero-start { min-height:54px; display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:0 22px; border-radius:12px; font-size:16px; font-weight:600; border:1px solid transparent; }
@@ -254,3 +256,41 @@ kbd { padding:2px 5px; border:1px solid #252a341f; border-radius:4px; font:inher
   .voice-panel { flex-wrap:wrap; }
 }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+
+/* Screen 01 only. The design system takes precedence over the prototype:
+   readable placeholder, 32px minimum heading, one clay accent in the footer. */
+.capture-shell { --domi-error:#9c332d; --domi-barro:#d97745; width:100%; padding:40px 24px 48px; }
+.capture-shell .domi-header { padding-bottom:24px; margin-bottom:0; }
+.capture-shell .domi-brand { gap:12px; font-size:20px; }
+/* Keep the open base; the single clay piece on this screen is the footer dot. */
+.capture-shell .domi-brand rect { display:none; }
+.capture-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; color:var(--domi-muted); background:#dfe7f4; font-size:13px; }
+.capture-badge::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--domi-blue); }
+.capture-shell .capture-main { margin:32px 0 24px; padding:0; }
+.capture-shell .intro { max-width:480px; margin:12px 0 24px; font-size:17px; line-height:1.55; }
+.capture-shell .domi-chip { padding:6px 13px; min-height:34px; }
+.capture-shell .domi-chip[aria-pressed='true'] { background:#dfe7f4; color:var(--domi-blue); border-color:#2447c638; }
+.capture-shell .domi-chip svg { flex:none; }
+.capture-input-wrap { padding:22px 26px 16px; }
+.capture-label { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.capture-shell .domi-input-pills-container { padding:0; margin-bottom:12px; }
+.capture-shell .domi-input-pill { max-width:100%; font-size:14.5px; }
+.capture-shell .domi-input-pill-text { overflow-wrap:anywhere; }
+.capture-shell .domi-pill-remove-btn { flex:none; width:24px; height:24px; opacity:1; }
+.capture-shell .capture-canvas textarea { padding:0; }
+.capture-shell .capture-canvas textarea:focus { outline:none; }
+.capture-shell .capture-canvas textarea::placeholder { color:var(--domi-muted); opacity:1; }
+.capture-reassurance { display:flex; align-items:center; gap:7px; font-size:13.5px; }
+.capture-reassurance svg { flex:none; }
+.capture-reassurance strong { color:var(--domi-blue); font-weight:600; }
+.capture-shell .capture-actions .primary { color:var(--cal); box-shadow:0 2px 6px #2447c640,0 8px 18px -4px #2447c647; }
+.capture-shell .error { color:var(--domi-error); }
+.capture-manifesto { display:flex; align-items:center; gap:6px; border-top:1px solid #252a340f; padding-top:24px; margin-top:0; font-size:13px; }
+.capture-footer-dot { flex:none; width:4px; height:4px; border-radius:50%; background:var(--domi-barro); }
+@media(max-width:480px) {
+  .capture-shell { padding:24px 18px 32px; }
+  .capture-shell .capture-actions { flex-direction:column; gap:10px; }
+  .capture-shell .capture-actions button { width:100%; flex:none; }
+  .capture-shell .capture-footer { flex-direction:column; align-items:flex-start; gap:8px; }
+  .capture-shell .capture-manifesto { justify-content:center; text-align:center; }
+}
