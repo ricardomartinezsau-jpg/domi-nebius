@@ -15,6 +15,7 @@ const taskSchema = z.object({
   id: z.string(), dumpId: z.string(), title: z.string(), tray: traySchema,
   done: z.boolean(), doneAt: timestamp.nullable(), steps: z.array(stepSchema),
   order: z.number(), dependsOn: z.array(z.string()), why: z.string(),
+  researchRunId: z.string().optional(),
 })
 // Validate browser storage without importing the server-side inference module.
 export const quickResultSchema = z.object({
@@ -101,6 +102,7 @@ export type SessionAction =
   | { type: 'choose'; taskId: string }
   | { type: 'move'; taskId: string; tray: Tray }
   | { type: 'step'; taskId: string; stepId: string }
+  | { type: 'research'; taskId: string; runId: string }
   | { type: 'start'; taskId: string; runId: string; now: number }
   | { type: 'pause' | 'resume' | 'checkpoint' | 'leave' | 'stop' | 'finish'; now: number }
   | { type: 'resetClock'; runId: string; now: number }
@@ -149,6 +151,7 @@ export function sessionReducer(session: DomiSession, action: SessionAction): Dom
     case 'choose': return session.tasks.some(task => task.id === action.taskId && !task.done) ? { ...session, selectedTaskId: action.taskId, selectionByUser: true } : session
     case 'move': return { ...session, tasks: session.tasks.map(task => task.id === action.taskId ? { ...task, tray: action.tray } : task) }
     case 'step': return { ...session, tasks: session.tasks.map(task => task.id === action.taskId && !task.done ? { ...task, steps: task.steps.map(step => step.id === action.stepId ? { ...step, done: !step.done } : step) } : task) }
+    case 'research': return { ...session, tasks: session.tasks.map(task => task.id === action.taskId ? { ...task, researchRunId: action.runId } : task) }
     case 'start': {
       if (!session.tasks.some(task => task.id === action.taskId && !task.done)) return session
       const oldRuns = session.runs.map(run => run.activeSince === null ? run : pauseRun(run, action.now))

@@ -4,13 +4,39 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Check, Pause, Play, RotateCcw } from 'lucide-react'
 import { activeRun, elapsedMs, type DomiSession, type SessionAction } from '@/lib/session'
 import { Brand } from './brand'
+import { ResearchBlock } from './research-block'
 
 type Props = { session: DomiSession; dispatch: (action: SessionAction) => void; retryDetail: (dumpId: string) => void }
 export function Dominio({ session, dispatch, retryDetail }: Props) {
   const task = session.tasks.find(item => item.id === session.selectedTaskId)
   const run = activeRun(session)
   const [now, setNow] = useState(Date.now)
+  const [researching, setResearching] = useState(false)
+  const [blocker, setBlocker] = useState('')
+  const [submittingBlocker, setSubmittingBlocker] = useState(false)
+  
   const heading = useRef<HTMLHeadingElement>(null)
+  
+  const handleResearch = async () => {
+    if (!task || !blocker.trim()) return
+    setSubmittingBlocker(true)
+    try {
+      const res = await fetch('/api/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskTitle: task.title, blocker })
+      })
+      if (res.ok) {
+        const { runId } = await res.json()
+        dispatch({ type: 'research', taskId: task.id, runId })
+        setResearching(false)
+        setBlocker('')
+      }
+    } finally {
+      setSubmittingBlocker(false)
+    }
+  }
+
   useEffect(() => { heading.current?.focus(); const timer = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(timer) }, [])
   if (!task || !run) return null
   const seconds = Math.floor(elapsedMs(run, now) / 1000)
@@ -40,6 +66,32 @@ export function Dominio({ session, dispatch, retryDetail }: Props) {
           {dump?.detailStatus === 'failed' && <p className="meta">Los pasos no llegaron. <button className="quiet" onClick={() => retryDetail(dump.id)}>Reintentar pasos</button></p>}
           <div className="dominio-actions">{pending ? <button className="primary" onClick={() => dispatch({ type: 'step', taskId: task.id, stepId: pending.id })}><Check size={18} />Completé esta acción</button> : <button className="primary" onClick={() => act('finish')}><Check size={18} />Terminé esta tarea</button>}<button className="quiet" onClick={() => act('stop')}>Parar por hoy</button></div>
           {pending && <button className="quiet finish-whole" onClick={() => act('finish')}>Ya terminé la tarea completa</button>}
+
+          {task.researchRunId ? (
+            <ResearchBlock runId={task.researchRunId} />
+          ) : researching ? (
+            <div style={{ marginTop: 24, padding: '20px 24px', background: '#090e1a', borderRadius: 16, border: '1px solid #335cff4d' }}>
+              <label style={{ display: 'block', color: '#a6bce9', marginBottom: 12, fontWeight: 500 }}>¿Qué te frena?</label>
+              <textarea
+                autoFocus
+                disabled={submittingBlocker}
+                value={blocker}
+                onChange={e => setBlocker(e.target.value)}
+                placeholder="Describe qué necesitas saber o qué te impide avanzar..."
+                style={{ width: '100%', minHeight: 80, padding: 12, borderRadius: 8, background: '#0a101d', border: '1px solid #ffffff14', color: '#f5f5ef', marginBottom: 16, resize: 'vertical', fontFamily: 'inherit' }}
+              />
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button className="primary" disabled={!blocker.trim() || submittingBlocker} onClick={handleResearch}>
+                  {submittingBlocker ? 'Iniciando...' : 'Pedir investigación'}
+                </button>
+                <button className="quiet" onClick={() => setResearching(false)}>Cancelar</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: 24, textAlign: 'center' }}>
+              <button className="quiet" onClick={() => setResearching(true)}>¿Qué te frena? (Investigar)</button>
+            </div>
+          )}
         </>}
       </article>
       {!task.done && <button className="quiet back-to-trays" onClick={() => act('leave')}><ArrowLeft size={16} />Volver a las bandejas</button>}
