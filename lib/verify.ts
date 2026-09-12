@@ -44,6 +44,40 @@ export type VerifyContext = {
 const TRAY_KEYS = /personalBienestar|profesionalProductiva|familiarDomestica|socialComunitaria/
 
 /**
+ * Presupuesto de descomposición. AGENTS.md registra «máximo 3 tareas
+ * descompuestas» como decisión tomada con datos, pero hasta aquí sólo vivía
+ * como una frase dentro del prompt: ni el esquema ni una regla la sostenían.
+ * La evidencia grabada en `evaluation-evidence/` muestra corridas con 5 tareas
+ * descompuestas y una con 10 micro-pasos en una sola tarea. Pedirle algo al
+ * modelo no es una garantía; comprobarlo sí.
+ */
+export const DECOMPOSITION_BUDGET = 3
+/**
+ * Tope de micro-pasos por tarea. Es el único que la persona mira de frente:
+ * en Dominio los pasos de la tarea elegida se pintan todos. Diez casillas para
+ * una sola tarea reproducen exactamente la avalancha de la que vino huyendo,
+ * y «hazla más pequeña» tiene que acercar el siguiente movimiento, no alargar
+ * la lista. Medido contra la evidencia grabada: lo observado va de 1 a 10 con
+ * el grueso entre 3 y 5, así que este tope recorta el caso desbocado y deja
+ * intacto todo lo demás.
+ */
+export const STEP_BUDGET = 5
+
+/**
+ * Recorte determinístico, no una segunda llamada al modelo. Se aplica DESPUÉS
+ * de verificar, para que el informe registre que la regla se rompió y aun así
+ * la persona reciba una lista acotada.
+ *
+ * Recorta pasos, nunca tareas: los pasos vienen ordenados y la cola es trabajo
+ * posterior, mientras que tirar la descomposición de una tarea puede dejar sin
+ * pasos justo a la que la persona eligió. Esa se reporta y se conserva.
+ */
+export function clampDetail(detail: DetailOutput): DetailOutput {
+  if (detail.microTasks.every((group) => group.atomicSteps.length <= STEP_BUDGET)) return detail
+  return { ...detail, microTasks: detail.microTasks.map((group) => group.atomicSteps.length <= STEP_BUDGET ? group : { ...group, atomicSteps: group.atomicSteps.slice(0, STEP_BUDGET) }) }
+}
+
+/**
  * Higiene del texto que la persona lee. Los tres defectos aparecieron en
  * pruebas reales y los tres delatan la costura de la máquina.
  */
@@ -105,6 +139,24 @@ export function verifyDetail(detail: DetailOutput, ctx: VerifyContext): Rule[] {
     'micro-steps-present',
     detail.microTasks.every((group) => group.atomicSteps.length > 0),
     'Toda tarea descompuesta debe tener al menos un micro-paso.',
+  )
+
+  // Los dos presupuestos de descomposición. Ninguno es reparable: el recorte
+  // determinístico de `clampDetail` ya acota lo que se muestra, y volver a
+  // pedírselo al modelo cuesta segundos sin garantizar que obedezca —la
+  // evidencia grabada muestra que no obedece el límite que ya trae el prompt.
+  const overflowing = detail.microTasks.filter((group) => group.atomicSteps.length > STEP_BUDGET)
+  add(
+    'step-budget',
+    overflowing.length === 0,
+    `Ninguna tarea puede traer más de ${STEP_BUDGET} micro-pasos; hay ${overflowing.length} que se pasa(n). Se recortan antes de mostrarlos.`,
+    false,
+  )
+  add(
+    'decomposition-budget',
+    detail.microTasks.length <= DECOMPOSITION_BUDGET,
+    `Se descompusieron ${detail.microTasks.length} tareas y el presupuesto es ${DECOMPOSITION_BUDGET}. Se conservan, pero el límite documentado se rompió.`,
+    false,
   )
 
   // El primer paso de la secuencia no puede depender de algo pendiente: si

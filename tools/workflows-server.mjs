@@ -37,6 +37,43 @@ process.on('unhandledRejection', (reason) => {
   console.error('[workflows] promesa sin capturar:', reason instanceof Error ? reason.message : reason)
 })
 
+/**
+ * ¿Alcanza este proceso la base de datos? En el arranque, no 120 segundos
+ * después y dentro de una ejecución.
+ *
+ * La corrida del 12 de septiembre de 2026 terminó «completada» sin escribir
+ * una sola fila: el trabajador no consiguió su primera escritura y nada lo
+ * dijo. Este servicio se crea a mano en el panel de Render y sus variables se
+ * pegan a mano —el blueprint no puede declararlas—, así que una dirección
+ * ausente o vieja aquí es invisible. Esta línea la hace visible.
+ *
+ * No bloquea el registro de tareas: se lanza suelta, con su propio límite de
+ * tiempo, y sólo escribe en el log. Nunca imprime la contraseña.
+ */
+function probeDatabase() {
+  const url = process.env.DATABASE_URL?.trim()
+  if (!url) {
+    console.error('[workflows] base de datos: NO HAY DATABASE_URL. Este servicio no puede escribir ni un hallazgo.')
+    return
+  }
+  let where = 'destino ilegible'
+  try {
+    const parsed = new URL(url)
+    where = `${parsed.host}${parsed.pathname}`
+  } catch {}
+  const ssl = process.env.DATABASE_SSL === 'require' ? 'require' : 'sin TLS'
+  const started = Date.now()
+  Promise.race([
+    import('./../lib/db.ts').then(({ query }) => query('SELECT 1')),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('no respondió en 15 s')), 15_000)),
+  ]).then(
+    () => console.log(`[workflows] base de datos: alcanzable en ${Date.now() - started} ms · ${where} · ${ssl}`),
+    (error) => console.error(`[workflows] base de datos: INALCANZABLE · ${where} · ${ssl} · ${error instanceof Error ? error.message : error}`),
+  )
+}
+
+probeDatabase()
+
 if (onRender) {
   // El SDK levanta su servidor de tareas y mantiene el proceso vivo. Este
   // temporizador es el cinturón: si por lo que sea no lo levantara, el proceso

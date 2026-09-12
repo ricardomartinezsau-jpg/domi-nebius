@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { quickSchema, runQuickTriage, runDetailTriage, type TriageContext } from '@/lib/triage'
 import {
   SAFE_SOMATIC_HOOK,
+  clampDetail,
   failures,
   repairInstruction,
   verifyDetail,
@@ -111,8 +112,10 @@ async function detailPhase(ctx: TriageContext, quick: z.infer<typeof quickSchema
     check,
   )
 
+  // El recorte va después de verificar: el informe registra que la regla se
+  // rompió y la persona recibe la lista acotada de todos modos.
   return {
-    output: attempt.output ?? first.output,
+    output: clampDetail(attempt.output ?? first.output),
     model: first.model,
     latencyMs: first.latencyMs,
     guardrails: report(attempt.rules, attempt.repaired, false),

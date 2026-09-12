@@ -8,7 +8,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  DECOMPOSITION_BUDGET,
   SAFE_SOMATIC_HOOK,
+  STEP_BUDGET,
+  clampDetail,
   failures,
   repairInstruction,
   verifyDetail,
@@ -89,6 +92,50 @@ test('un paso reescrito con información externa sin fuente no es reparable pidi
   const rules = verifyDetail(detail(), ctx)
   assert.ok(ids(rules).includes('grounded-has-source'))
   assert.ok(!repairInstruction(rules).includes('sin fuente verificable'))
+})
+
+/**
+ * La avalancha. AGENTS.md registra «máximo 3 tareas descompuestas» como
+ * decisión tomada con datos, pero sólo vivía dentro del prompt. La evidencia
+ * de `evaluation-evidence/` muestra corridas con 5 tareas descompuestas y una
+ * con 10 micro-pasos en una sola tarea: el modelo no obedece el límite que se
+ * le pide. Estas pruebas existen para que ese caso no pueda volver a llegar a
+ * la pantalla sin que algo lo frene y lo deje anotado.
+ */
+const paso = (n) => ({ stepTitle: `Abrir la hoja de cálculo ${n}`, durationMinutes: 3, actionableHook: 'Abre el archivo de ventas del mes.' })
+const avalancha = detail({
+  microTasks: Array.from({ length: 5 }, (_, t) => ({
+    originalTask: `Revisar números ${t + 1}`,
+    atomicSteps: Array.from({ length: 10 }, (_, s) => paso(s + 1)),
+  })),
+})
+
+test('diez micro-pasos en una tarea rompen step-budget y no se reparan pidiendo de nuevo', () => {
+  const rules = verifyDetail(avalancha, { rawDump: CALMA })
+  assert.ok(ids(rules).includes('step-budget'))
+  assert.ok(!failures(rules).find((rule) => rule.id === 'step-budget').repairable)
+  assert.ok(!repairInstruction(rules).includes('micro-pasos'))
+})
+
+test('descomponer más tareas que el presupuesto queda registrado', () => {
+  assert.ok(avalancha.microTasks.length > DECOMPOSITION_BUDGET)
+  assert.ok(ids(verifyDetail(avalancha, { rawDump: CALMA })).includes('decomposition-budget'))
+})
+
+test('el recorte acota los pasos, conserva las tareas y no deja ninguna vacía', () => {
+  const clamped = clampDetail(avalancha)
+  assert.ok(clamped.microTasks.every((group) => group.atomicSteps.length === STEP_BUDGET))
+  // Tirar una descomposición puede dejar sin pasos justo a la tarea elegida.
+  assert.equal(clamped.microTasks.length, avalancha.microTasks.length)
+  assert.ok(ids(verifyDetail(clamped, { rawDump: CALMA })).includes('micro-steps-present') === false)
+  assert.ok(!ids(verifyDetail(clamped, { rawDump: CALMA })).includes('step-budget'))
+})
+
+test('una descomposición dentro del presupuesto pasa intacta, sin copiarla', () => {
+  const sano = detail()
+  assert.equal(clampDetail(sano), sano)
+  assert.ok(!ids(verifyDetail(sano, { rawDump: CALMA })).includes('step-budget'))
+  assert.ok(!ids(verifyDetail(sano, { rawDump: CALMA })).includes('decomposition-budget'))
 })
 
 test('la instrucción de reparación solo nombra lo que el modelo puede corregir', () => {

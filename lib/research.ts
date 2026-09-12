@@ -322,10 +322,59 @@ export async function executeGuide(runId: string) {
     } satisfies Guide & { disagreement: string | null }
   })
 
+  // Aquí NO se declara terminada la ejecución. Este paso puede devolver una
+  // guía con cero pasos —si ningún paso citó una fuente recuperable, el filtro
+  // de arriba los quita todos— y antes eso bastaba para marcarla completada.
+  // Quien declara el final es `finishRun`, y sólo con evidencia delante.
+  return guide
+}
+
+/**
+ * El final de una investigación, y la única puerta por la que puede declararse
+ * terminada.
+ *
+ * Existe porque el éxito se estaba afirmando en tres sitios distintos sin que
+ * ninguno mirara si había resultado: el paso de guía marcaba la ejecución como
+ * hecha aunque su guía viniera vacía, la columna `ok` nacía en `true`, y el
+ * orquestador de Render devolvía `{ok:true}` por haber recorrido sus pasos.
+ * Una corrida real del 12 de septiembre de 2026 terminó «completada» con cero
+ * preguntas, cero hallazgos, cero fuentes y cero pasos registrados.
+ *
+ * Una afirmación de éxito tiene que estar respaldada por una fila.
+ */
+export type RunEvidence = { findings: number; sources: number; steps: number }
+
+/**
+ * La regla, separada de la base de datos para que se pueda comprobar sin ella.
+ * Devuelve qué falta; vacío significa que la ejecución sí produjo algo.
+ */
+export function missingEvidence(evidence: RunEvidence): string[] {
+  const missing: string[] = []
+  if (evidence.findings < 1) missing.push('hallazgos')
+  if (evidence.sources < 1) missing.push('fuentes')
+  if (evidence.steps < 1) missing.push('una guía con al menos un paso')
+  return missing
+}
+
+export async function finishRun(runId: string): Promise<void> {
+  const row = await queryOne<{ findings: string; sources: string; steps: string }>(
+    `SELECT
+       (SELECT count(*) FROM findings WHERE run_id = $1) AS findings,
+       (SELECT count(DISTINCT source_url) FROM findings WHERE run_id = $1) AS sources,
+       coalesce((SELECT jsonb_array_length(coalesce(result -> 'steps', '[]'::jsonb))
+                 FROM run_steps WHERE run_id = $1 AND step = 'guide' AND status = 'done'), 0) AS steps`,
+    [runId],
+  )
+  const missing = missingEvidence({ findings: Number(row?.findings ?? 0), sources: Number(row?.sources ?? 0), steps: Number(row?.steps ?? 0) })
+  if (missing.length) throw new Error(`La investigación no produjo ${missing.join(', ')}. No se declara completada.`)
   // El error de un intento anterior se borra al terminar bien: una ejecución
   // que se recuperó no puede seguir mostrando el fallo del que se recuperó.
   await query(`UPDATE runs SET status = 'done', current_step = NULL, ok = true, error = NULL WHERE id = $1`, [runId])
-  return guide
+}
+
+/** Deja el fallo escrito en la ejecución, no sólo en el paso que lo provocó. */
+export async function markRunFailed(runId: string, message: string): Promise<void> {
+  await query(`UPDATE runs SET status = 'failed', ok = false, error = $2 WHERE id = $1`, [runId, message])
 }
 
 /**
@@ -339,13 +388,13 @@ export async function advanceResearch(runId: string): Promise<void> {
     await executeGap(runId)
     await executeSearchTwo(runId)
     await executeGuide(runId)
+    await finishRun(runId)
   } catch (error) {
     // Que otro ejecutor tenga un paso no es un fallo de la investigación: es
     // la protección funcionando. Marcarla 'failed' aquí le mentiría a quien
     // está esperando, porque el otro ejecutor va a seguir la cadena.
     if (error instanceof StepBusyError) return
-    const message = error instanceof Error ? error.message : 'Fallo sin detalle.'
-    await query(`UPDATE runs SET status = 'failed', ok = false, error = $2 WHERE id = $1`, [runId, message])
+    await markRunFailed(runId, error instanceof Error ? error.message : 'Fallo sin detalle.')
     throw error
   }
 }

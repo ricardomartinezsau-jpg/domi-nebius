@@ -11,7 +11,7 @@
     "migrate": "node tools/migrate.mjs",
     "models": "node tools/models.mjs",
     "eval": "node tests/eval.mjs",
-    "test": "node --test tests/session.test.mjs tests/guardrails.test.mjs tests/criterio.test.mjs",
+    "test": "node --test tests/session.test.mjs tests/guardrails.test.mjs tests/research.test.mjs tests/criterio.test.mjs",
     "start:workflows": "node tools/workflows-server.mjs"
   },
   "dependencies": {
