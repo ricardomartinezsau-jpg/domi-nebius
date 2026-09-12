@@ -1,5 +1,11 @@
-# Blueprint de Render para Domi
-# Define la base de datos PostgreSQL, la aplicación web Next.js y el servicio de Render Workflows.
+# Blueprint de Render para Domi: la aplicación web y el servicio de Workflows.
+#
+# La base de datos NO se declara aquí a propósito. Ya existe una aprovisionada
+# (domi-nebius-db) con las migraciones aplicadas y con la evidencia de las
+# investigaciones ya corridas. Declararla en el blueprint haría que Render
+# creara una segunda, vacía, y los servicios apuntarían a esa: se perdería todo
+# lo anterior sin que nada diera error. Su cadena de conexión se pega a mano en
+# cada servicio, que es lo que `sync: false` significa.
 
 services:
   - type: web
@@ -9,16 +15,25 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
+      # Se pegan a mano en el panel; ninguna viaja en el repositorio.
       - key: DATABASE_URL
-        fromDatabase:
-          name: domi-db
-          property: connectionString
+        sync: false
+      - key: DATABASE_SSL
+        sync: false
       - key: NEBIUS_API_KEY
         sync: false
       - key: LINKUP_API_KEY
         sync: false
       - key: RENDER_API_KEY
         sync: false
+      # Sin secreto, la capa de cuentas rompe el arranque con un error rojo.
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      # El origen HTTPS real del servicio, no localhost.
+      - key: BETTER_AUTH_URL
+        sync: false
+      # Tiene que coincidir con el nombre del servicio de workflows de abajo:
+      # es la primera mitad del identificador de tarea que dispara la app.
       - key: RENDER_WORKFLOW_SLUG
         value: domi-research
 
@@ -27,21 +42,18 @@ services:
     runtime: node
     plan: starter
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: npm run start:workflows
+    # OJO: aquí NO puede ir `npm start`. Ese comando levanta Next.js, que en
+    # este servicio no atiende a nadie, y las tareas nunca quedarían
+    # registradas: el servicio se vería sano y no ejecutaría ni una
+    # investigación. `start:workflows` solo carga las tareas y deja que el SDK
+    # levante su servidor.
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: domi-db
-          property: connectionString
+        sync: false
+      - key: DATABASE_SSL
+        sync: false
       - key: NEBIUS_API_KEY
         sync: false
       - key: LINKUP_API_KEY
         sync: false
-      - key: RENDER_SDK_AUTO_START
-        value: "true"
-
-databases:
-  - name: domi-db
-    plan: starter
-    databaseName: domi
-    user: domi
