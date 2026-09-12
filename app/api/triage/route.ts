@@ -73,28 +73,32 @@ async function repairOnce<T>(
 async function quickPhase(ctx: TriageContext) {
   const first = await runQuickTriage(ctx)
   const check = (candidate: typeof first.output) => verifyQuick(candidate, { rawDump: ctx.rawDump })
+  const firstRules = check(first.output)
+
+  // Cuando lo que falla es la regla somática, no se pide una corrección: se
+  // aplica el texto fijo y punto. Medido, la reparación añadía unos cuatro
+  // segundos de espera justo en el caso de alguien que dice que no puede
+  // respirar, y terminaba en el mismo texto fijo de todas formas.
+  if (failures(firstRules).some((rule) => rule.id === 'somatic-override')) {
+    const output = {
+      ...first.output,
+      momentumMode: { ...first.output.momentumMode, activationHook: SAFE_SOMATIC_HOOK[ctx.locale ?? 'es'] },
+    }
+    return { output, model: first.model, latencyMs: first.latencyMs, guardrails: report(check(output), false, true) }
+  }
 
   const attempt = await repairOnce(
-    check(first.output),
+    firstRules,
     async (instruction) => (await runQuickTriage(ctx, { repair: instruction })).output,
     check,
   )
-  let output = attempt.output ?? first.output
-  let rules = attempt.rules
 
-  // Última red. La promesa de no empujar una entrega a alguien que no puede
-  // respirar no puede depender de que el modelo obedezca dos veces seguidas:
-  // si sigue rota, el arranque lo escribe el sistema con un texto fijo.
-  const safeHookApplied = failures(rules).some((rule) => rule.id === 'somatic-override')
-  if (safeHookApplied) {
-    output = {
-      ...output,
-      momentumMode: { ...output.momentumMode, activationHook: SAFE_SOMATIC_HOOK[ctx.locale ?? 'es'] },
-    }
-    rules = check(output)
+  return {
+    output: attempt.output ?? first.output,
+    model: first.model,
+    latencyMs: first.latencyMs,
+    guardrails: report(attempt.rules, attempt.repaired, false),
   }
-
-  return { output, model: first.model, latencyMs: first.latencyMs, guardrails: report(rules, attempt.repaired, safeHookApplied) }
 }
 
 async function detailPhase(ctx: TriageContext, quick: z.infer<typeof quickSchema>) {
