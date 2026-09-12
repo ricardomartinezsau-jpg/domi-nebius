@@ -1,11 +1,20 @@
-# Blueprint de Render para Domi: la aplicación web y el servicio de Workflows.
+# Blueprint de Render para Domi: la aplicación web.
 #
-# La base de datos NO se declara aquí a propósito. Ya existe una aprovisionada
-# (domi-nebius-db) con las migraciones aplicadas y con la evidencia de las
-# investigaciones ya corridas. Declararla en el blueprint haría que Render
-# creara una segunda, vacía, y los servicios apuntarían a esa: se perdería todo
-# lo anterior sin que nada diera error. Su cadena de conexión se pega a mano en
-# cada servicio, que es lo que `sync: false` significa.
+# Aquí NO está todo lo que se despliega, y conviene saberlo antes de suponerlo:
+#
+# 1. El servicio de Workflows no se puede declarar en un blueprint. Los tipos
+#    admitidos son web, pserv, worker, cron y keyvalue; `workflow` no es uno de
+#    ellos. Se crea a mano en el panel de Render, y sus datos están al final de
+#    este archivo para que no haya que buscarlos en otro sitio.
+#
+# 2. La base de datos tampoco se declara. Ya existe una aprovisionada
+#    (domi-nebius-db) con las migraciones aplicadas y con la evidencia de las
+#    investigaciones ya corridas. Declararla aquí haría que Render creara una
+#    segunda, vacía, y los servicios apuntarían a esa: se perdería todo lo
+#    anterior sin que nada diera error.
+#
+# `sync: false` significa exactamente eso: el valor se pega a mano en el panel
+# y nunca viaja en el repositorio.
 
 services:
   - type: web
@@ -15,7 +24,6 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
-      # Se pegan a mano en el panel; ninguna viaja en el repositorio.
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_SSL
@@ -24,36 +32,39 @@ services:
         sync: false
       - key: LINKUP_API_KEY
         sync: false
+      # Con esta clave la app entrega la investigación a Render Workflows. Sin
+      # ella la ejecuta en su propio proceso, que funciona pero no es lo que se
+      # presenta al premio.
       - key: RENDER_API_KEY
         sync: false
       # Sin secreto, la capa de cuentas rompe el arranque con un error rojo.
       - key: BETTER_AUTH_SECRET
         sync: false
-      # El origen HTTPS real del servicio, no localhost.
+      # El origen HTTPS real del servicio, no localhost. Se conoce recién
+      # después del primer despliegue: se rellena entonces y se vuelve a lanzar.
       - key: BETTER_AUTH_URL
         sync: false
-      # Tiene que coincidir con el nombre del servicio de workflows de abajo:
-      # es la primera mitad del identificador de tarea que dispara la app.
+      # Primera mitad del identificador de tarea que dispara la app
+      # (domi-research/research). Tiene que ser el nombre exacto del servicio
+      # de Workflows creado en el panel.
       - key: RENDER_WORKFLOW_SLUG
         value: domi-research
 
-  - type: workflow
-    name: domi-research
-    runtime: node
-    plan: starter
-    buildCommand: npm install
-    startCommand: npm run start:workflows
-    # OJO: aquí NO puede ir `npm start`. Ese comando levanta Next.js, que en
-    # este servicio no atiende a nadie, y las tareas nunca quedarían
-    # registradas: el servicio se vería sano y no ejecutaría ni una
-    # investigación. `start:workflows` solo carga las tareas y deja que el SDK
-    # levante su servidor.
-    envVars:
-      - key: DATABASE_URL
-        sync: false
-      - key: DATABASE_SSL
-        sync: false
-      - key: NEBIUS_API_KEY
-        sync: false
-      - key: LINKUP_API_KEY
-        sync: false
+# ---------------------------------------------------------------------------
+# Servicio de Workflows — se crea a mano en el panel de Render
+# ---------------------------------------------------------------------------
+#
+#   Nombre           domi-research      (debe coincidir con RENDER_WORKFLOW_SLUG)
+#   Repositorio      este mismo
+#   Language         Node
+#   Build command    npm install
+#   Start command    npm run start:workflows
+#
+#   Variables de entorno: DATABASE_URL, DATABASE_SSL, NEBIUS_API_KEY,
+#   LINKUP_API_KEY (los mismos valores que en domi-web).
+#
+# El comando de arranque NO puede ser `npm start`. Ese levanta Next.js, que en
+# este servicio no atiende a nadie, y las tareas nunca quedarían registradas:
+# el servicio se vería sano y no ejecutaría ni una investigación.
+# `npm run start:workflows` carga las tareas y deja que el SDK levante su
+# servidor solo.
