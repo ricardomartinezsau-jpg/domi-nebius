@@ -23,16 +23,43 @@ export function Trays({ session, dispatch, retryDetail }: Props) {
       <h1>Cada pendiente en su lugar.</h1>
       <p className="intro">Puedes cambiar cualquiera de bandeja. Tú eliges por dónde empezar.</p>
       {selected ? <section className="momentum-hero" aria-label="Tu punto de partida">
-        <p className="eyebrow">Te propongo empezar por esto</p>
+        <div className="hero-eyebrow-row">
+          <span className="hero-eyebrow-pill">Modo Momentum · Acción Inmediata</span>
+          <span className="hero-shield-pill">Una sola cosa a la vez</span>
+        </div>
         <h2>{selected.title}</h2>
-        <p className="hero-reason">{selected.why || 'Puedes empezar con esta o tocar otro pendiente de las bandejas.'}</p>
-        {first && <div className="hero-first"><span>Primer movimiento · {first.minutes} min estimados</span><strong>{first.title}</strong><p>{first.hook}</p></div>}
-        {selected.steps.length > 1 && <details className="hero-steps"><summary>Ver los {selected.steps.length} micro-pasos</summary><ol>{selected.steps.map(step => <li key={step.id}>{step.title}</li>)}</ol></details>}
-        <button className="hero-start" onClick={() => start(selected)}>Arrancar en Dominio <ArrowRight size={18} /></button>
-        <span className="hero-note">Un toque. La misma tarea, sin empezar de nuevo.</span>
-        {dump?.detailStatus === 'pending' && <p className="meta hero-status" role="status">Los micro-pasos se están preparando. Ya puedes arrancar.</p>}
+        <p className="hero-reason">{selected.why || 'Elegida por Domi para romper la inercia y poner tu día en movimiento.'}</p>
+        
+        {first && (
+          <div className="hero-first">
+            <span className="hero-first-tag">Primer movimiento · {first.minutes} min estimados</span>
+            <strong>{first.title}</strong>
+            {first.hook && <p>{first.hook}</p>}
+          </div>
+        )}
+
+        {selected.steps.length > 1 && (
+          <details className="hero-steps">
+            <summary>Hacerla más pequeña ({selected.steps.length} micro-pasos disponibles)</summary>
+            <ol>
+              {selected.steps.map(step => (
+                <li key={step.id}>
+                  <span>{step.title}</span> {step.minutes > 0 && <small className="step-time">({step.minutes} min)</small>}
+                </li>
+              ))}
+            </ol>
+          </details>
+        )}
+
+        <div className="hero-action-row">
+          <button className="hero-start" onClick={() => start(selected)}>
+            Arrancar en Dominio <ArrowRight size={18} />
+          </button>
+          <span className="hero-note">Un solo toque. La misma tarea, sin empezar de nuevo.</span>
+        </div>
+
+        {dump?.detailStatus === 'pending' && <p className="meta hero-status" role="status">Los micro-pasos se están preparando en segundo plano. Ya puedes arrancar.</p>}
         {dump?.detailStatus === 'failed' && <p className="meta hero-status">Los micro-pasos no llegaron. <button className="quiet" onClick={() => retryDetail(dump.id)}>Reintentar pasos</button></p>}
-        {dump?.detailStatus === 'done' && !selected.steps.length && <p className="meta hero-status">Esta tarea todavía no tiene micro-pasos asociados. Puedes trabajar directamente en ella.</p>}
       </section> : <section className="empty-panel"><h2>La mesa está libre.</h2><p>Lo que terminaste sigue disponible abajo.</p></section>}
 
       <div className="tray-grid">
