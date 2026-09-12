@@ -40,6 +40,23 @@ const CANDIDATE_MODELS = [
 ]
 let MODEL = process.env.NEBIUS_MODEL?.trim() || CANDIDATE_MODELS[0]
 const MAX_OUTPUT_TOKENS = 4096
+
+/**
+ * El evaluador solo vale si manda la misma petición que el producto. Este
+ * techo vivía duplicado aquí y allá, y estuvieron distintos: el producto no
+ * mandaba ninguno y el evaluador sí, así que una respuesta desbocada se veía
+ * en producción y nunca en la evaluación. Si vuelven a separarse, esto falla.
+ */
+function assertTokenParity() {
+  const source = fs.readFileSync(path.join(ROOT, 'lib/nebius.ts'), 'utf8')
+  const declared = source.match(/MAX_OUTPUT_TOKENS\s*=\s*(\d+)/)?.[1]
+  if (Number(declared) !== MAX_OUTPUT_TOKENS) {
+    throw new Error(`El techo de salida no coincide: lib/nebius.ts usa ${declared ?? '(ninguno)'} y el evaluador ${MAX_OUTPUT_TOKENS}.`)
+  }
+  if (!/maxOutputTokens:\s*MAX_OUTPUT_TOKENS/.test(source)) {
+    throw new Error('lib/nebius.ts declara el techo pero no se lo pasa a la llamada.')
+  }
+}
 const TIMEOUT_MS = 60_000
 const TEMPERATURE = 0.2
 // Precios de referencia NO verificados contra la tarifa vigente.
@@ -439,6 +456,7 @@ Código de salida: 0 si todo pasa, 1 si algo falla, 2 si falta configuración.
 
 /** Pruebas locales deterministas: fetch inyectado, nunca la red real. */
 async function selfTest() {
+  assertTokenParity()
   const contract = loadTriageContract()
   const fixtures = loadFixtures()
   const fixture = fixtures.find((f) => f.expected.microTasksGenerated)

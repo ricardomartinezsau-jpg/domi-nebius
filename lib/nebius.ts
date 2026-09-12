@@ -23,6 +23,19 @@ export const CANDIDATE_MODELS = [
 
 export const DEFAULT_MODEL = process.env.NEBIUS_MODEL?.trim() || CANDIDATE_MODELS[0]
 
+/**
+ * Techo de salida. Existe porque sin él el SDK no manda `max_tokens` y el
+ * proveedor no pone freno: una respuesta que se desboca —pasa, con salida
+ * estructurada y arrays sin tope— sigue generando hasta agotar el timeout de
+ * 60 s, y la persona se come el minuto entero para recibir un error.
+ *
+ * El valor lo usan el producto y `tests/eval.mjs` desde aquí, a propósito: si
+ * cada uno tuviera el suyo, la evaluación dejaría de medir la misma petición
+ * que se sirve, y ese es justo el tipo de diferencia que no se nota hasta que
+ * alguien la audita.
+ */
+export const MAX_OUTPUT_TOKENS = 4096
+
 function resolveModel(modelId: string) {
   const apiKey = process.env.NEBIUS_API_KEY?.trim()
   if (!apiKey) throw new Error('NEBIUS_API_KEY no está configurada.')
@@ -57,6 +70,7 @@ export async function generateStructured<T extends z.ZodTypeAny>(args: {
       model,
       output: Output.object({ schema: args.schema }),
       abortSignal: AbortSignal.timeout(60_000),
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
       maxRetries: 1,
       system: args.system,
       prompt: args.prompt,

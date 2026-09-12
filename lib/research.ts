@@ -246,7 +246,9 @@ export async function advanceResearch(runId: string): Promise<void> {
       } satisfies Guide & { disagreement: string | null }
     })
 
-    await query(`UPDATE runs SET status = 'done', current_step = NULL, ok = true WHERE id = $1`, [runId])
+    // El error de un intento anterior se borra al terminar bien: una ejecución
+    // que se recuperó no puede seguir mostrando el fallo del que se recuperó.
+    await query(`UPDATE runs SET status = 'done', current_step = NULL, ok = true, error = NULL WHERE id = $1`, [runId])
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Fallo sin detalle.'
     await query(`UPDATE runs SET status = 'failed', ok = false, error = $2 WHERE id = $1`, [runId, message])
