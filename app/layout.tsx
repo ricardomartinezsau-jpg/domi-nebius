@@ -1,16 +1,15 @@
 import type { Metadata } from 'next'
+import { Atkinson_Hyperlegible_Next } from 'next/font/google'
 import './globals.css'
+import './flow.css'
+
+const atkinson = Atkinson_Hyperlegible_Next({ subsets: ['latin'], display: 'swap', variable: '--font-atkinson' })
 
 export const metadata: Metadata = {
-  title: 'Domi — Brain Dump Triage (Nebius Token Factory)',
-  description:
-    'Suelta tu vaciado mental caótico y recibe 4 bandejas de vida, orden de dependencias, micro-tareas y un arranque de 2 minutos, generado por Meta Llama 3.3 70B en Nebius Token Factory.',
+  title: 'Domi — una cosa en movimiento',
+  description: 'Domi reparte tus pendientes en cuatro bandejas y te ayuda a comenzar una acción, con inferencia real de Nebius Token Factory.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="es">
-      <body>{children}</body>
-    </html>
-  )
+  return <html lang="es" className={atkinson.variable}><body>{children}</body></html>
 }

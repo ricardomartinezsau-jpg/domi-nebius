@@ -81,14 +81,17 @@ formatear código, escribir documentación.
 
 ## Interfaz: pantalla por pantalla, nunca de golpe
 
-El diseño lo dirige el Founder. El ciclo es: **wireframe en diagrama → él decide qué se
-diseña y qué no → se construye esa pantalla → siguiente.** Nunca varias pantallas en una
-pasada: lo que sale así hay que tirarlo.
+El diseño lo lidera **Antigravity** bajo la dirección macro del Founder (Ricardo). El ciclo
+es: **propuesta visual en `diseno-ui/antigravity/` → el Founder decide y valida → se construye
+esa pantalla en código → siguiente.** Nunca varias pantallas en una pasada: lo que sale así hay
+que tirarlo.
 
-El sistema de diseño ya existe y es la fuente: "La mesa libre" (`app/globals.css` aquí, y su
-referencia completa en el Domi privado). Sus cinco reglas mandan — una cosa domina, el panel
-agrupa, la regla azul señala, **una sola acción en barro por pantalla**, y cerrar vacía.
-Nada de inventar lenguaje visual nuevo.
+El sistema de diseño maestro está documentado en `../diseno-ui/antigravity/SISTEMA_DISENO_DOMI.md`
+y en `identidad-domi/direccion-visual-domi.md` ("La mesa libre", Territorio B). Sus reglas mandan:
+tipografía obligatoria `Atkinson Hyperlegible Next`, fondo Cal `#F5F5EF`, base abierta 4:1 como
+isotipo oficial, **una sola acción en barro (#D97745) por pantalla**, botones calibrados a 52-56px,
+y cerrar vacía la mesa. Nada de inventar lenguaje visual nuevo, fuentes default ni gradientes genéricos de IA.
+
 
 ## Qué se trajo del producto privado, y por qué
 

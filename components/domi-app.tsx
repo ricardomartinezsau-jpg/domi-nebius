@@ -1,96 +1,48 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import type { DetailOutput, QuickOutput } from '@/lib/triage'
-import { BrainDump } from './brain-dump'
+import { Capture } from './capture'
+import { Trays } from './trays'
+import { Dominio } from './dominio'
+import { useSession } from './use-session'
 
-/**
- * Cascarón del producto mientras se diseñan Foco y Plan pantalla por pantalla.
- * Lo único terminado aquí es el vaciado; lo que se muestra después del
- * resultado es provisional a propósito y está marcado como tal.
- */
 export function DomiApp() {
-  const [dumpOpen, setDumpOpen] = useState(false)
-  const [quick, setQuick] = useState<QuickOutput | null>(null)
-  const [detail, setDetail] = useState<DetailOutput | null>(null)
-  const [detailError, setDetailError] = useState<string | null>(null)
-
-  async function handleQuickResult(output: QuickOutput, rawDump: string) {
-    setQuick(output)
-    setDetail(null)
-    setDetailError(null)
-    setDumpOpen(false)
-
-    // La segunda fase arranca sola: la persona ya tiene con qué moverse.
+  const { session, dispatch, ready, storageError } = useSession()
+  const requests = useRef(new Map<string, AbortController>())
+  useEffect(() => {
+    const pending = requests.current
+    return () => { pending.forEach(controller => controller.abort()); pending.clear() }
+  }, [])
+  const requestDetail = useCallback(async (id: string, rawText: string, quick: QuickOutput) => {
+    if (requests.current.has(id)) return
+    const controller = new AbortController()
+    requests.current.set(id, controller)
+    dispatch({ type: 'detailStatus', dumpId: id, status: 'pending' })
+    const timeout = setTimeout(() => controller.abort(), 135_000)
     try {
-      const response = await fetch('/api/triage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phase: 'detail', rawDump, locale: 'es', quick: output }),
-      })
+      const response = await fetch('/api/triage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: 'detail', rawDump: rawText, locale: 'es', quick }), signal: controller.signal })
       const data = await response.json()
-      if (!response.ok) {
-        setDetailError(data.error ?? 'No se pudo armar el plan completo.')
-        return
-      }
-      setDetail(data.output as DetailOutput)
-    } catch {
-      setDetailError('No se pudo armar el plan completo.')
-    }
+      if (!response.ok || !data.output || !Array.isArray(data.output.dependencyOrder) || !Array.isArray(data.output.microTasks)) throw new Error('detail failed')
+      dispatch({ type: 'detail', dumpId: id, detail: data.output as DetailOutput })
+    } catch { dispatch({ type: 'detailStatus', dumpId: id, status: 'failed' }) }
+    finally { clearTimeout(timeout); requests.current.delete(id) }
+  }, [dispatch])
+  const onQuick = useCallback((quick: QuickOutput, rawText: string) => {
+    const id = crypto.randomUUID()
+    dispatch({ type: 'quick', id, rawText, quick, now: Date.now() })
+    void requestDetail(id, rawText, quick)
+  }, [dispatch, requestDetail])
+  const onDraft = useCallback((text: string) => dispatch({ type: 'draft', text }), [dispatch])
+  const retryDetail = (id: string) => {
+    const dump = session.dumps.find(item => item.id === id)
+    if (dump) void requestDetail(dump.id, dump.rawText, dump.quick)
   }
-
-  return (
-    <main className="page">
-      {!quick && (
-        <>
-          <h1 className="t-voice">Haz lugar para una cosa.</h1>
-          <p className="note">
-            Suelta lo que traes en la cabeza y Domi lo reparte, lo ordena y te da por dónde
-            empezar. Sin cuenta funciona igual; con cuenta, recuerda lo de la vez pasada.
-          </p>
-          <button type="button" className="action" onClick={() => setDumpOpen(true)}>
-            Soltar lo que traigo
-          </button>
-        </>
-      )}
-
-      {quick && (
-        <>
-          <section className="panel" aria-label="Empieza por aquí">
-            <p className="t-eyebrow">Empieza por aquí · 2–5 min</p>
-            <p className="t-voice">{quick.momentumMode.activationHook}</p>
-            <div className="inset" style={{ marginTop: 'var(--s4)' }}>
-              <span className="t-meta">Hoy ignora lo demás: </span>
-              <span className="t-read">{quick.momentumMode.singleFocusShield}</span>
-            </div>
-          </section>
-
-          {!detail && !detailError && (
-            <div className="sweep" role="status" aria-live="polite">
-              Armando el plan completo
-            </div>
-          )}
-          {detailError && <p className="error">{detailError}</p>}
-          {detail && (
-            <section className="panel" aria-label="El plan">
-              <p className="t-eyebrow">Provisional — pendiente de diseño</p>
-              <ol>
-                {detail.dependencyOrder.map((step) => (
-                  <li key={step.step} className="t-read">
-                    {step.task}
-                  </li>
-                ))}
-              </ol>
-            </section>
-          )}
-
-          <button type="button" className="link-quiet" onClick={() => setQuick(null)}>
-            Empezar de nuevo
-          </button>
-        </>
-      )}
-
-      <BrainDump open={dumpOpen} onClose={() => setDumpOpen(false)} onQuickResult={handleQuickResult} />
-    </main>
-  )
+  if (!ready) return <main className="domi-shell" aria-busy="true"><p className="meta" role="status">Abriendo tu mesa…</p></main>
+  return <>
+    {storageError && <p className="storage-notice" role="alert">{storageError}</p>}
+    {session.screen === 'capture' && <Capture initialText={session.draft} onDraft={onDraft} onResult={onQuick} hasTasks={session.tasks.length > 0} onBack={() => dispatch({ type: 'screen', screen: 'trays', now: Date.now() })} />}
+    {session.screen === 'trays' && <Trays session={session} dispatch={dispatch} retryDetail={retryDetail} />}
+    {session.screen === 'dominio' && <Dominio session={session} dispatch={dispatch} retryDetail={retryDetail} />}
+  </>
 }
