@@ -20,9 +20,9 @@ pegar.
    problema concreto resuelve. Si no se puede explicar en una frase por qué existe un
    archivo, una dependencia o un campo del esquema, no entra.
 2. **Menos deuda técnica.** Preferir un componente menos, aunque parezca "menos completo",
-   sobre uno más que después nadie audita. Este repo no arrastra autenticación, base de
-   datos ni i18n porque el producto no los necesita para cumplir su propósito — no porque
-   falte tiempo.
+   sobre uno más que después nadie audita. Cada pieza que sí está —cuentas, base de datos,
+   memoria— entró porque el producto no cumple su promesa sin ella, no porque estuviera
+   disponible.
 3. **Garantías formales antes que velocidad de escritura.** Manejo de errores explícito,
    validación de entradas, límites del sistema documentados y una evaluación que se pueda
    defender ante un desconocido — todo eso pesa más que llegar rápido a algo que "se ve
@@ -48,9 +48,10 @@ formatear código, escribir documentación.
 
 **Requiere decisión humana antes de avanzar (HITL):**
 - Cambiar el esquema Zod de `lib/triage.ts` (es el contrato del producto).
-- Cambiar de modelo, proveedor o endpoint de inferencia (hoy: exclusivamente Nebius Token
-  Factory + `meta-llama/Llama-3.3-70B-Instruct`; no hay fallback a otro proveedor a
-  propósito, para que la integración con el sponsor sea inequívoca).
+- Cambiar de modelo, proveedor o endpoint de inferencia. Hoy: exclusivamente Nebius Token
+  Factory con `google/gemma-3-27b-it`, y solo modelos de laboratorios occidentales. No hay
+  fallback a otro proveedor a propósito, para que la integración con el patrocinador sea
+  inequívoca.
 - Correr `npm run eval` en modo real (consume la `NEBIUS_API_KEY` real y tiene costo,
   aunque sea mínimo).
 - Cualquier push a `main` (este repo es público y `main` es lo que un juez va a ver y
@@ -65,10 +66,43 @@ formatear código, escribir documentación.
 3. Mostrar el fallo antes de arreglarlo si la corrección implica una decisión de diseño,
    no un typo. Un error de sintaxis se corrige; un cambio de contrato se propone.
 
-## Qué NO traer de vuelta del producto privado (Domi)
+## Decisiones que ya se tomaron con datos (no volver a discutirlas sin medir)
 
-Better Auth / login, Postgres + Drizzle + migraciones, i18n, dictado por voz, el sistema de
-diseño completo. Ninguno de esos es necesario para que un desconocido entre, escriba un
-vaciado mental y reciba un resultado usable — que es el criterio de "Shipping" del jurado.
-Si alguno de estos vuelve a aparecer, que sea porque una necesidad real de este repo lo
-justifica, no porque "ya existía en Domi".
+- **Dos llamadas, no una.** Pedir bandejas, dependencias, micro-pasos y arranque en una sola
+  respuesta daba 20 segundos con Gemma y dejaba a otros modelos sin espacio de salida. Partido
+  en fase rápida (bandejas + arranque) y fase de detalle, la persona ve algo en ~3,6 s.
+- **Máximo 3 tareas descompuestas.** Empezó como arreglo de tokens y resultó mejor producto:
+  diez tareas despiezadas de golpe reproducen la avalancha de la que la persona venía huyendo.
+- **Modelo elegido midiendo.** Cuatro modelos occidentales sobre los mismos cinco casos:
+  Gemma 3 y gpt-oss-120b pasan; Nemotron 3.5 Lightning se trunca; Llama 3.3 70B no completa
+  ni una vez en 60 s. La evidencia está en `evaluation-evidence/`.
+- **Rúbrica determinística, no un segundo modelo de juez.** Es gratis, reproducible y cada
+  aprobación se puede señalar con el dedo en `lib/verify.ts`.
+
+## Interfaz: pantalla por pantalla, nunca de golpe
+
+El diseño lo dirige el Founder. El ciclo es: **wireframe en diagrama → él decide qué se
+diseña y qué no → se construye esa pantalla → siguiente.** Nunca varias pantallas en una
+pasada: lo que sale así hay que tirarlo.
+
+El sistema de diseño ya existe y es la fuente: "La mesa libre" (`app/globals.css` aquí, y su
+referencia completa en el Domi privado). Sus cinco reglas mandan — una cosa domina, el panel
+agrupa, la regla azul señala, **una sola acción en barro por pantalla**, y cerrar vacía.
+Nada de inventar lenguaje visual nuevo.
+
+## Qué se trajo del producto privado, y por qué
+
+Del Domi privado se reusan **patrones, no archivos**: el sistema de diseño (reescrito en CSS
+plano, sin Tailwind), el arreglo del bug de permisos del dictado (arrancar el reconocimiento
+dentro del toque, sin comprobación previa con `await`), y la metodología de evaluación. Todo
+lo demás está escrito aquí desde cero.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

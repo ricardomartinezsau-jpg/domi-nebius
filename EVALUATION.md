@@ -1,39 +1,44 @@
-# Evaluación Nebius — Domi (MVP mínimo)
+# Evaluación Nebius — Domi
 
-Fecha: 2026-09-11T23:20:13.914Z. Modelo: `openai/gpt-oss-120b`.
+Fecha: 2026-09-11T23:40:09.568Z. Modelo: `google/gemma-3-27b-it`.
 
-Metodología: rúbrica determinística por caso (no un segundo LLM como juez), inspirada en el
-patrón de evaluación pointwise del notebook `day-1-evaluation-and-structured-output.ipynb`
-del curso de 5 días de GenAI de Google/Kaggle. Se eligió determinística y no LLM-juez a
-propósito: es gratis, reproducible bit a bit, y cada aprobación se puede explicar señalando
-la línea de código que la verificó — más defendible ante un jurado que "otro modelo dijo que
-está bien".
+## Qué se mide y por qué
 
-Evidencia completa de esta corrida: [`2026-09-11T23-20-13-914Z-0a10ab0e.json`](evaluation-evidence/2026-09-11T23-20-13-914Z-0a10ab0e.json)
-(sin credenciales; incluye solicitudes, respuestas, fallos, uso de tokens y hashes de los
-archivos evaluados).
+El producto hace **dos** llamadas, no una: la **fase rápida** devuelve las 4 bandejas y
+el arranque —lo que la persona ve y con lo que actúa— y la **fase de detalle** devuelve la
+secuencia de dependencias y los micro-pasos. Se partió así después de medir: pedir todo en
+una sola respuesta daba entre 9 y 20 segundos según el modelo, y uno de los candidatos se
+quedaba sin espacio de salida a media frase. Para alguien con disfunción ejecutiva, veinte
+segundos frente a una pantalla en blanco es donde se pierde la sesión.
+
+La rúbrica es determinística por caso (no un segundo modelo juzgando al primero), inspirada
+en el patrón de evaluación pointwise del notebook `day-1-evaluation-and-structured-output`
+del curso de GenAI de Google/Kaggle. Se eligió así a propósito: es gratis, reproducible, y
+cada aprobación se puede señalar con el dedo en el código que la verificó.
+
+Evidencia completa y reproducible: [`2026-09-11T23-40-09-568Z-46b4ccb8.json`](evaluation-evidence/2026-09-11T23-40-09-568Z-46b4ccb8.json).
 
 ## Mediciones
 
 | Métrica | Resultado | Alcance |
 | --- | --- | --- |
-| Generaciones completas | 5/5 | HTTP 200 y finish_reason=stop |
-| Latencia media | 9187 ms | objetivo <3500 ms: No cumple objetivo |
-| Costo medio estimado | $0.000829 USD | Dentro de referencia; tarifa sin verificar |
-| Conformidad de esquema (Zod) | 5/5 | Contrato estructural |
-| Contrato + rúbrica determinística | 5/5 | No equivale a precisión semántica completa |
+| Casos que pasan contrato + rúbrica | 5/5 | No equivale a precisión semántica completa |
+| Conformidad de esquema | 5/5 | Contrato estructural de ambas fases |
+| **Latencia de la fase rápida** | **3578 ms** | Lo que la persona espera mirando; objetivo <5000 ms: Cumple objetivo |
+| Latencia total (ambas fases) | 8241 ms | La segunda fase llega cuando ya arrancó |
+| Costo medio por vaciado | $0.000346 USD | Suma de las dos llamadas |
 
-El costo usa precios de referencia sin verificar: $0.13/M
-tokens de entrada y $0.4/M de salida. No representa
-facturación real de la cuenta.
+Los precios de referencia ($0.13/M entrada,
+$0.4/M salida) **no están verificados** contra la
+tarifa vigente y no representan facturación real.
 
 ## Resultados por caso
 
 ### Caso 1: Parálisis por análisis (multi-bandeja)
 
-- Estado: PASA · duración: 12301 ms · HTTP: 200.
-- Tokens: 449 entrada / 2624 salida · costo estimado: $0.001108 USD.
-- Hook de activación observado: Pon el cronómetro del móvil en 3 minutos, camina hasta la cocina y abre la nevera; ese pequeño movimiento rompe la inercia..
+- Estado: PASA · rápida: 4807 ms · detalle: 6195 ms · total: 11002 ms.
+- Tokens: 689 entrada / 798 salida · costo estimado: $0.000409 USD.
+- Arranque observado: Bebe un vaso de agua \*lento\*. Enfócate solo en la sensación del agua. 2 minutos..
 - PASA: Hook de activación no vacío.
 - PASA: Escudo de foco no vacío.
 - PASA: Bandeja esperada no vacía: personalBienestar.
@@ -41,70 +46,72 @@ facturación real de la cuenta.
 - PASA: Bandeja esperada no vacía: familiarDomestica.
 - PASA: Bandeja esperada no vacía: socialComunitaria.
 
-Revisión humana pendiente: Clasificación semántica real de cada ítem del vaciado (esto solo confirma que las listas no están vacías). Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada.
+Revisión humana pendiente: Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías). Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada.
 
 ### Caso 2: Trampa de hiperfoco en actividad de cueva
 
-- Estado: PASA · duración: 8112 ms · HTTP: 200.
-- Tokens: 447 entrada / 1898 salida · costo estimado: $0.000817 USD.
-- Hook de activación observado: Abre tu cliente de email, crea un nuevo mensaje y escribe solo la dirección del primer cliente (no envíes todavía). 2‑5 minutos, nada más..
+- Estado: PASA · rápida: 3666 ms · detalle: 5599 ms · total: 9265 ms.
+- Tokens: 682 entrada / 754 salida · costo estimado: $0.000390 USD.
+- Arranque observado: Bebe un vaso de agua \*lentamente\*. Fíjate en la sensación del agua al bajar. 2 minutos..
 - PASA: Hook de activación no vacío.
 - PASA: Escudo de foco no vacío.
 - PASA: Existe al menos una trampa de dopamina descrita (proxy estructural).
 
-Revisión humana pendiente: Clasificación semántica real de cada ítem del vaciado (esto solo confirma que las listas no están vacías). Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada.
+Revisión humana pendiente: Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías). Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada.
 
 ### Caso 3: Cadena de dependencias
 
-- Estado: PASA · duración: 6622 ms · HTTP: 200.
-- Tokens: 439 entrada / 1669 salida · costo estimado: $0.000725 USD.
-- Hook de activación observado: Abre Slack, entra al canal del equipo y escribe "Voy a tocar staging y prod en los próximos 30 min" (2 min)..
+- Estado: PASA · rápida: 2712 ms · detalle: 5506 ms · total: 8218 ms.
+- Tokens: 663 entrada / 688 salida · costo estimado: $0.000361 USD.
+- Arranque observado: Bebe un vaso de agua. Literalmente, levántate y bebe un vaso de agua..
 - PASA: Hook de activación no vacío.
 - PASA: Escudo de foco no vacío.
 - PASA: Secuencia numerada 1..N con tarea y razón no vacías.
-- PASA: El primer paso no depende de nada pendiente (es el punto de partida real).
+- PASA: El primer paso no depende de nada pendiente.
 
-Revisión humana pendiente: Clasificación semántica real de cada ítem del vaciado (esto solo confirma que las listas no están vacías). Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada.
+Revisión humana pendiente: Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías). Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada.
 
 ### Caso 4: Tarea monstruo que requiere micro-pasos
 
-- Estado: PASA · duración: 9612 ms · HTTP: 200.
-- Tokens: 419 entrada / 1500 salida · costo estimado: $0.000654 USD.
-- Hook de activación observado: Pon el temporizador del móvil a 5 min, abre Excel y escribe la palabra “INICIO” en la celda A1. Eso es todo lo que tienes que hacer para arrancar..
+- Estado: PASA · rápida: 3526 ms · detalle: 1471 ms · total: 4997 ms.
+- Tokens: 628 entrada / 408 salida · costo estimado: $0.000245 USD.
+- Arranque observado: Bebe un vaso de agua \*lentamente\*. Fíjate en la sensación del agua al bajar. 2 minutos..
 - PASA: Hook de activación no vacío.
 - PASA: Escudo de foco no vacío.
 - PASA: Micro-tareas y pasos no vacíos.
 - PASA: Micro-pasos de 2 a 10 minutos.
 - PASA: Cada micro-paso tiene título y hook (proxy estructural).
 
-Revisión humana pendiente: Clasificación semántica real de cada ítem del vaciado (esto solo confirma que las listas no están vacías). Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada.
+Revisión humana pendiente: Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías). Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada.
 
 ### Caso 5: Caso de dificultad — colapso sensorial vs. deber externo
 
-- Estado: PASA · duración: 9289 ms · HTTP: 200.
-- Tokens: 446 entrada / 1951 salida · costo estimado: $0.000838 USD.
-- Hook de activación observado: Pon tu teléfono en modo ‘No molestar’, cierra todas las pestañas del navegador excepto una, y escribe la palabra ‘START’ en un documento nuevo. Eso lleva menos de 2 min y ya estás en modo acción..
+- Estado: PASA · rápida: 3178 ms · detalle: 4544 ms · total: 7722 ms.
+- Tokens: 686 entrada / 588 salida · costo estimado: $0.000324 USD.
+- Arranque observado: 5 respiraciones profundas. Inhala contando hasta 4, exhala contando hasta 6. Solo eso. Nada más..
 - PASA: Hook de activación no vacío.
 - PASA: Escudo de foco no vacío.
 
-Revisión humana pendiente: Clasificación semántica real de cada ítem del vaciado (esto solo confirma que las listas no están vacías). Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada. Caso de dificultad: revisar manualmente si prioriza la regulación somática sobre la entrega. Las notas del fixture son una hipótesis, no una observación.
+Revisión humana pendiente: Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías). Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada. Caso de dificultad: revisar si prioriza regular el cuerpo sobre la entrega. Las notas del fixture son hipótesis, no observaciones.
 
 ## Caso de dificultad
 
 **case-05-struggle-case-burnout**: la persona describe parálisis por sobrecarga sensorial
-("mi cabeza va a mil por hora... no puedo respirar bien") junto con un compromiso externo
-("prometí entregar el reporte de ventas hoy a las 5pm"). No hay aserciones automáticas duras
-para este caso — el resultado completo queda en la evidencia de esta corrida para revisión
-humana: si el modelo prioriza la entrega sobre la regulación del estado de la persona, es una
-falla de producto real aunque el JSON sea válido.
+("mi cabeza va a mil por hora... no puedo respirar bien") junto a un compromiso externo
+("prometí entregar el reporte de ventas hoy a las 5pm"). El riesgo medido no es que el JSON
+salga mal: es que el modelo empuje la entrega por encima del estado de la persona. Por eso
+existe una regla determinística fuera del modelo (`somatic-override` en `lib/verify.ts`)
+que rechaza el resultado si detecta señales de colapso físico y el arranque no regula el
+cuerpo primero. El resultado completo de cada corrida queda en la evidencia para revisión
+humana.
 
 ## Límites y reproducción
 
-Se ejecutan 5 fixtures sintéticos, en secuencia, sin reintentos, con máximo
-4096 tokens de salida y 60000 ms por llamada. Se reutiliza
-`lib/triage.ts` real (mismo prompt y esquema que usa la app en producción, no una copia).
-No cubre percepción de utilidad ni latencia end-to-end del navegador.
+5 fixtures sintéticos, en secuencia, sin reintentos, máximo 4096
+tokens por llamada y 60000 ms de espera. Se reutiliza `lib/triage.ts` real (mismos
+prompts y esquemas que la app), no una copia. No cubre percepción de utilidad ni latencia
+end-to-end del navegador.
 
-Validación local sin red: `node tests/eval.mjs --self-test` y `node tests/eval.mjs --dry-run`.
-Para repetir con la API real: `NEBIUS_API_KEY=tu_clave node tests/eval.mjs`. Código de
-salida: 0 si pasan todos los checks automáticos, 1 si alguno falla, 2 si falta configuración.
+Sin red: `node tests/eval.mjs --self-test` y `node tests/eval.mjs --dry-run`.
+Con la API real: `NEBIUS_API_KEY=... node tests/eval.mjs [--model=<id>]`.
+Código de salida: 0 si todo pasa, 1 si algo falla, 2 si falta configuración.

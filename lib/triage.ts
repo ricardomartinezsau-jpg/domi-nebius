@@ -2,32 +2,58 @@ import { z } from 'zod'
 import { generateStructured } from './nebius'
 
 /**
- * Contrato mínimo del triage: solo las 4 superpotencias que este MVP
- * demuestra y mide. Se dejó fuera a propósito todo lo que en el producto
- * completo depende de un historial persistente (primer dominó vs. tareas
- * abiertas, duplicados, bloqueos, recordatorios): este servicio no guarda
- * estado entre peticiones, así que evaluar esos campos aquí sería una
- * garantía falsa.
+ * El contrato está partido en dos a propósito, y la razón es medida, no
+ * estética: pedir las cuatro secciones en una sola respuesta hacía que los
+ * cuatro modelos occidentales probados tardaran entre 9 y 20 segundos, y que
+ * uno se quedara sin espacio a media frase. Veinte segundos frente a una
+ * pantalla es exactamente donde se pierde la persona que vinimos a ayudar.
+ *
+ * Fase 1 (rápida): dónde cae cada cosa y por dónde empezar AHORA.
+ * Fase 2 (detalle): la secuencia completa y los micro-pasos.
+ *
+ * La persona actúa con la fase 1; la fase 2 llega mientras ya está empezando.
  */
-export const triageSchema = z.object({
-  trayDispatch: z
-    .object({
-      personalBienestar: z.array(z.string()).describe('Salud física/mental, descanso, ocio propio, autocuidado.'),
-      profesionalProductiva: z.array(z.string()).describe('Negocio, trabajo, facturación, entregables a clientes.'),
-      familiarDomestica: z.array(z.string()).describe('Hogar, pareja, familia, mantenimiento y logística.'),
-      socialComunitaria: z.array(z.string()).describe('Amigos, red de contactos, vecindario y comunidad.'),
-    })
-    .describe('Distribución automática de todos los ítems del vaciado en las 4 bandejas fundamentales de vida.'),
+
+const TRAYS = z
+  .object({
+    personalBienestar: z.array(z.string()).describe('Salud física/mental, descanso, ocio propio, autocuidado.'),
+    profesionalProductiva: z.array(z.string()).describe('Negocio, trabajo, facturación, entregables a clientes.'),
+    familiarDomestica: z.array(z.string()).describe('Hogar, pareja, familia, mantenimiento y logística.'),
+    socialComunitaria: z.array(z.string()).describe('Amigos, red de contactos, vecindario y comunidad.'),
+  })
+  .describe('Distribución de todos los ítems del vaciado en las 4 bandejas fundamentales de vida.')
+
+const MOMENTUM = z
+  .object({
+    activationHook: z.string().describe('Micro-acción inmediata de 2 a 5 minutos, ridículamente fácil, para romper la inercia.'),
+    cognitiveLoadLevel: z.enum(['baja', 'media', 'alta']).describe('Nivel de saturación mental detectado en el vaciado.'),
+    antiDopamineTraps: z
+      .array(
+        z.object({
+          activity: z.string(),
+          warning: z.string().describe('Explicación empática de por qué drena energía sin aportar valor en sus propios términos.'),
+        }),
+      )
+      .describe('Trampas de procrastinación productiva detectadas.'),
+    singleFocusShield: z.string().describe('Regla de foco: qué ignorar conscientemente hoy.'),
+  })
+  .describe('Modo Momentum: arranque de baja fricción para mentes dispersas / TDAH.')
+
+/** Fase 1: lo que la persona necesita para moverse en los próximos 5 minutos. */
+export const quickSchema = z.object({ trayDispatch: TRAYS, momentumMode: MOMENTUM })
+
+/** Fase 2: el plan completo, que llega cuando ya arrancó. */
+export const detailSchema = z.object({
   dependencyOrder: z
     .array(
       z.object({
         step: z.number().int(),
         task: z.string(),
-        dependsOn: z.array(z.string()).describe('Tareas o condiciones previas indispensables antes de ejecutar esta.'),
+        dependsOn: z.array(z.string()).describe('Prerrequisitos indispensables antes de ejecutar esta.'),
         whyThisOrder: z.string().describe('Razón secuencial lógica para evitar bloqueos.'),
       }),
     )
-    .describe('Secuencia lógica ordenada por dependencias para evitar fricción y parálisis.'),
+    .describe('Secuencia lógica ordenada por dependencias.'),
   microTasks: z
     .array(
       z.object({
@@ -36,57 +62,113 @@ export const triageSchema = z.object({
           z.object({
             stepTitle: z.string().describe('Micro-acción de 2 a 10 minutos.'),
             durationMinutes: z.number().int().min(2).max(10),
-            actionableHook: z.string().describe('El primer clic o movimiento físico concreto para romper la parálisis por análisis.'),
+            actionableHook: z.string().describe('El primer clic o movimiento físico concreto.'),
           }),
         ),
       }),
     )
-    .describe('Descomposición de tareas intimidantes en micro-pasos atómicos (<10 min).'),
-  momentumMode: z
-    .object({
-      activationHook: z.string().describe('Micro-acción inmediata de 2 a 5 minutos ridículamente fácil para romper la inercia.'),
-      cognitiveLoadLevel: z.enum(['baja', 'media', 'alta']).describe('Nivel de saturación mental detectado en el vaciado.'),
-      antiDopamineTraps: z
-        .array(
-          z.object({
-            activity: z.string(),
-            warning: z.string().describe('Explicación empática de por qué esto drena energía sin aportar valor a sus propios términos.'),
-          }),
-        )
-        .describe('Trampas de procrastinación productiva detectadas (organizar Notion, refactors cosméticos, etc.).'),
-      singleFocusShield: z.string().describe('Regla de foco extremo: qué ignorar conscientemente hoy para no dispersar energía.'),
-    })
-    .describe('Modo Momentum: arranque de baja fricción para mentes dispersas / TDAH.'),
+    .describe('Descomposición de tareas intimidantes en micro-pasos atómicos.'),
 })
 
+/** El objeto completo, que es lo que se evalúa y lo que se guarda. */
+export const triageSchema = quickSchema.merge(detailSchema)
+
+export type QuickOutput = z.infer<typeof quickSchema>
+export type DetailOutput = z.infer<typeof detailSchema>
 export type TriageOutput = z.infer<typeof triageSchema>
 
-export type TriageContext = { rawDump: string; today: string; locale?: 'es' | 'en' }
+export type TriageContext = {
+  rawDump: string
+  today: string
+  locale?: 'es' | 'en'
+  /** Tareas parecidas de vaciados anteriores, ya recuperadas de la memoria. */
+  recalled?: { title: string; status: string; timesResurfaced: number }[]
+}
 
-const SYSTEM_ES = `Eres el motor de triage de Domi. Recibes un vaciado mental caótico de una persona con disfunción ejecutiva / TDAH y devuelves una estructura que le permita empezar sin fricción. No conoces su historial: trabajas solo con lo que escribió ahora.
+const BASE_ES = `Eres el motor de triage de Domi. Recibes un vaciado mental caótico de una persona con disfunción ejecutiva / TDAH. Hablas directo, empático y sin reproches. No inventes tareas que la persona no mencionó.`
+const BASE_EN = `You are Domi's triage engine. You receive a chaotic brain dump from someone with executive dysfunction / ADHD. Speak directly and empathetically, without reproach. Never invent tasks the person did not mention.`
 
-Reglas:
-1. BANDEJAS (trayDispatch): clasifica cada ítem del vaciado en personalBienestar, profesionalProductiva, familiarDomestica o socialComunitaria.
-2. ORDEN DE DEPENDENCIAS (dependencyOrder): detecta qué bloquea a qué y ordena la secuencia; explica en whyThisOrder por qué va en ese lugar.
-3. MICRO-TAREAS (microTasks): descompón cualquier tarea intimidante en pasos de 2 a 10 minutos, cada uno con un actionableHook: el primer movimiento físico o de pantalla concreto.
-4. MODO MOMENTUM (momentumMode): da un activationHook de 2 a 5 minutos ridículamente fácil, identifica actividades de cueva / trampas de dopamina falsa en antiDopamineTraps (sin culpar a la persona) y define un singleFocusShield claro.
-5. Responde en español, tono directo, empático y humano. No inventes tareas que la persona no mencionó. No repitas literalmente el mismo texto entre bandejas y pasos.`
+const QUICK_ES = `${BASE_ES}
 
-const SYSTEM_EN = `You are Domi's triage engine. You receive a chaotic brain dump from someone with executive dysfunction / ADHD and return a structure that lets them start with zero friction. You know nothing about their history: work only with what they wrote now.
+Devuelve SOLO dos cosas:
+1. BANDEJAS (trayDispatch): clasifica cada ítem en personalBienestar, profesionalProductiva, familiarDomestica o socialComunitaria.
+2. MOMENTUM (momentumMode): un activationHook de 2 a 5 minutos ridículamente fácil; las trampas de dopamina falsa que detectes, sin culpar; y un singleFocusShield claro.
 
-Rules:
+REGLA INNEGOCIABLE: si el vaciado trae señales de colapso físico (no poder respirar, pánico, temblor, parálisis total), el activationHook DEBE ser una acción que regule el cuerpo —respirar, tomar agua, salir a tomar aire— antes que cualquier entrega de trabajo. El compromiso sigue existiendo después; la persona no.
+
+CÓMO SE ESCRIBE:
+- El activationHook es UNA sola frase de menos de 140 caracteres. Una acción, no un discurso.
+- Escribe en minúsculas normales. Nunca uses MAYÚSCULAS para enfatizar: a alguien saturado le suena a grito.
+- Nada de asteriscos, guiones bajos ni formato: es texto que se lee tal cual.
+- Nunca escribas los nombres internos de las bandejas (personalBienestar, profesionalProductiva, familiarDomestica, socialComunitaria). Di "lo personal", "lo del trabajo", "lo de casa", "lo social".
+- Si mencionas minutos en el arranque, que sean entre 2 y 5. No prometas bloques de 15.`
+
+const QUICK_EN = `${BASE_EN}
+
+Return ONLY two things:
 1. TRAYS (trayDispatch): classify every item into personalBienestar, profesionalProductiva, familiarDomestica or socialComunitaria.
-2. DEPENDENCY ORDER (dependencyOrder): detect what blocks what and sequence it; explain in whyThisOrder why it belongs there.
-3. MICRO-TASKS (microTasks): break any intimidating task into 2-10 minute steps, each with an actionableHook: a concrete first physical or on-screen move.
-4. MOMENTUM MODE (momentumMode): give a ridiculously easy 2-5 minute activationHook, flag cave activities / fake-dopamine traps in antiDopamineTraps (without blaming the person), and define a clear singleFocusShield.
-5. Respond in English, direct and human tone. Do not invent tasks the person did not mention. Do not literally repeat the same text across trays and steps.`
+2. MOMENTUM (momentumMode): a ridiculously easy 2-5 minute activationHook; the fake-dopamine traps you detect, without blame; and a clear singleFocusShield.
 
-export async function runTriage(ctx: TriageContext) {
+NON-NEGOTIABLE: if the dump shows signs of physical collapse (can't breathe, panic, shaking, total paralysis), the activationHook MUST be a body-regulating action —breathe, drink water, step outside— before any work delivery. The commitment survives; the person may not.
+
+HOW IT IS WRITTEN:
+- The activationHook is ONE sentence under 140 characters. An action, not a speech.
+- Normal sentence case. Never use ALL CAPS for emphasis: to someone overwhelmed it reads as shouting.
+- No asterisks, underscores or markup: this text is read exactly as written.
+- Never write the internal tray identifiers (personalBienestar, profesionalProductiva, familiarDomestica, socialComunitaria). Say "the personal stuff", "work", "home", "social".
+- If you mention minutes in the hook, keep them between 2 and 5. Never promise 15-minute blocks.`
+
+const DETAIL_ES = `${BASE_ES}
+
+Ya se decidió el reparto en bandejas y el arranque. Ahora devuelve SOLO:
+1. DEPENDENCIAS (dependencyOrder): detecta qué bloquea a qué y numera de 1 a N. El paso 1 no puede depender de nada pendiente.
+2. MICRO-TAREAS (microTasks): parte en pasos de 2 a 10 minutos, cada uno con un actionableHook que sea el primer movimiento físico o de pantalla concreto.
+
+LÍMITE ESTRICTO: descompón como MÁXIMO 3 tareas, las que más destraban el resto. Entregar diez tareas descompuestas a la vez reproduce la avalancha que esta persona vino a evitar. Las demás quedan listadas en las bandejas, sin descomponer.`
+
+const DETAIL_EN = `${BASE_EN}
+
+Tray dispatch and the starting hook are already decided. Now return ONLY:
+1. DEPENDENCIES (dependencyOrder): detect what blocks what and number 1..N. Step 1 cannot depend on anything pending.
+2. MICRO-TASKS (microTasks): break into 2-10 minute steps, each with an actionableHook that is the concrete first physical or on-screen move.
+
+HARD LIMIT: decompose AT MOST 3 tasks, the ones that unblock the most. Handing over ten decomposed tasks at once recreates the avalanche this person came to escape. The rest stay listed in the trays, undecomposed.`
+
+function memoryBlock(ctx: TriageContext, isEn: boolean): string {
+  if (!ctx.recalled?.length) return ''
+  const lines = ctx.recalled.map(
+    (task) => `- ${task.title} [${task.status}${task.timesResurfaced > 1 ? `, ha reaparecido ${task.timesResurfaced} veces sin arrancar` : ''}]`,
+  )
+  return isEn
+    ? `\n\nFROM THEIR HISTORY (do not repeat what is done; if something keeps resurfacing, name it kindly as a possible avoidance):\n${lines.join('\n')}`
+    : `\n\nDE SU HISTORIAL (no repitas lo hecho; si algo reaparece una y otra vez, nómbralo con amabilidad como posible evitación):\n${lines.join('\n')}`
+}
+
+function userPrompt(ctx: TriageContext, isEn: boolean): string {
+  const head = isEn ? `TODAY'S DATE: ${ctx.today}` : `FECHA DE HOY: ${ctx.today}`
+  const body = isEn ? 'PERSON\'S BRAIN DUMP:' : 'VACIADO MENTAL DE LA PERSONA:'
+  return `${head}${memoryBlock(ctx, isEn)}\n\n${body}\n"""\n${ctx.rawDump}\n"""`
+}
+
+export async function runQuickTriage(ctx: TriageContext, modelId?: string) {
   const isEn = ctx.locale === 'en'
-  const system = isEn ? SYSTEM_EN : SYSTEM_ES
-  const prompt = isEn
-    ? `TODAY'S DATE: ${ctx.today}\n\nPERSON'S BRAIN DUMP:\n"""\n${ctx.rawDump}\n"""`
-    : `FECHA DE HOY: ${ctx.today}\n\nVACIADO MENTAL DE LA PERSONA:\n"""\n${ctx.rawDump}\n"""`
+  return generateStructured({
+    system: isEn ? QUICK_EN : QUICK_ES,
+    prompt: userPrompt(ctx, isEn),
+    schema: quickSchema,
+    modelId,
+  })
+}
 
-  return generateStructured({ system, prompt, schema: triageSchema })
+export async function runDetailTriage(ctx: TriageContext, quick: QuickOutput, modelId?: string) {
+  const isEn = ctx.locale === 'en'
+  const decided = isEn
+    ? `\n\nALREADY DECIDED — starting hook: ${quick.momentumMode.activationHook}`
+    : `\n\nYA DECIDIDO — arranque: ${quick.momentumMode.activationHook}`
+  return generateStructured({
+    system: isEn ? DETAIL_EN : DETAIL_ES,
+    prompt: userPrompt(ctx, isEn) + decided,
+    schema: detailSchema,
+    modelId,
+  })
 }

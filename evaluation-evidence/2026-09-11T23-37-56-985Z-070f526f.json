@@ -1,0 +1,649 @@
+{
+  "runId": "2026-09-11T23-37-56-985Z-070f526f",
+  "startedAt": "2026-09-11T23:37:56.985Z",
+  "finishedAt": "2026-09-11T23:39:38.711Z",
+  "nodeVersion": "v26.4.0",
+  "endpoint": "https://api.tokenfactory.nebius.com/v1/chat/completions",
+  "model": "google/gemma-3-27b-it",
+  "settings": {
+    "maxOutputTokens": 4096,
+    "timeoutMs": 60000,
+    "temperature": 0.2,
+    "contextDate": "2026-09-11",
+    "phases": 2
+  },
+  "referencePricing": {
+    "promptPerMillionUsd": 0.13,
+    "completionPerMillionUsd": 0.4,
+    "verified": false
+  },
+  "targets": {
+    "quickLatencyMs": 5000,
+    "totalLatencyMs": 20000,
+    "averageEstimatedCostUsd": 0.002
+  },
+  "provenance": {
+    "fixturesSha256": "121dd50d4388bbd2fb418f23130fbc7435d2689a751ee84e84a8f831bcca2bd6",
+    "triageSourceSha256": "68b983e3a708a2e8aa78732c3ad8217bdf3b46be0d3b5ce41810e1976678f03b"
+  },
+  "fixtures": [
+    {
+      "id": "case-01-adhd-paralysis",
+      "name": "Caso 1: Parálisis por análisis (multi-bandeja)",
+      "description": "Mente dispersa con 5 frentes abiertos a la vez. Requiere distribución en las 4 bandejas y un hook de activación.",
+      "rawDump": "Tengo mil cosas en la cabeza y no sé por dónde empezar: tengo que mandar la propuesta al cliente TechCorp, comprar leche y verduras porque el refri está vacío, sacar cita con el dentista por un dolor de muela, contestarle a Luis el WhatsApp de hace tres días y arreglar la fuga del lavabo.",
+      "expected": {
+        "traysPopulated": [
+          "personalBienestar",
+          "profesionalProductiva",
+          "familiarDomestica",
+          "socialComunitaria"
+        ]
+      }
+    },
+    {
+      "id": "case-02-hyperfocus-cave-trap",
+      "name": "Caso 2: Trampa de hiperfoco en actividad de cueva",
+      "description": "La persona quema horas en una actividad de baja tracción mientras evita algo urgente. El modelo debe señalar la trampa sin culpar.",
+      "rawDump": "Llevo 3 horas buscando la paleta de colores perfecta para mi nuevo dashboard en Notion y leyendo tutoriales de atajos de teclado, pero lo que de verdad me urge y me da pánico es mandar las 3 facturas vencidas a mis clientes y llamar al banco por el bloqueo de cuenta.",
+      "expected": {
+        "identifiedCaveTrap": true
+      }
+    },
+    {
+      "id": "case-03-dependency-chain",
+      "name": "Caso 3: Cadena de dependencias",
+      "description": "Tareas donde el desorden cognitivo confunde el orden. El modelo debe ordenar la secuencia real de prerrequisitos.",
+      "rawDump": "Quiero desplegar la nueva versión a producción, pero aún no he corrido las migraciones en staging, y para correr las migraciones necesito pedirle las credenciales a Juan que está en junta, y además tengo que avisarle al equipo por Slack antes de tocar nada.",
+      "expected": {
+        "orderedSequence": true,
+        "firstActionIsPrerequisite": true
+      }
+    },
+    {
+      "id": "case-04-microtask-breakdown",
+      "name": "Caso 4: Tarea monstruo que requiere micro-pasos",
+      "description": "Una tarea grande que detona evitación. El modelo debe desglosarla en acciones de menos de 10 minutos con un primer clic concreto.",
+      "rawDump": "Tengo que hacer la contabilidad y declaración mensual de impuestos de los últimos tres meses. Cada vez que pienso en eso me pongo a limpiar mi cuarto o ver videos en YouTube.",
+      "expected": {
+        "microTasksGenerated": true,
+        "maxMicroTaskMinutes": 10,
+        "hasPhysicalHook": true
+      }
+    },
+    {
+      "id": "case-05-struggle-case-burnout",
+      "name": "Caso 5: Caso de dificultad — colapso sensorial vs. deber externo",
+      "description": "Struggle case. La persona entra en parálisis por sobrecarga sensorial pero tiene un compromiso crítico. Sin aserciones automáticas duras: requiere revisión humana.",
+      "rawDump": "Estoy en parálisis total frente a la pantalla, mi cabeza va a mil por hora y siento que no puedo respirar bien, pero prometí entregar el reporte de ventas hoy a las 5pm y si no lo entrego quedo mal. Por otro lado quiero ponerme a investigar sobre acuarios marinos.",
+      "expected": {
+        "notes": "El modelo suele detectar la investigación de acuarios como actividad de cueva, pero puede sesgarse a empujar el reporte de ventas antes que la regulación del sistema nervioso de la persona. Ver docs/EVALUATION.md para el análisis de esta ejecución."
+      }
+    }
+  ],
+  "summary": {
+    "attempted": 5,
+    "passed": 4,
+    "schemaValid": 4,
+    "meanQuickMs": 3735,
+    "meanTotalMs": 11129,
+    "meanEstimatedCostUsd": 0.0007135400000000001
+  },
+  "results": [
+    {
+      "id": "case-01-adhd-paralysis",
+      "name": "Caso 1: Parálisis por análisis (multi-bandeja)",
+      "model": "google/gemma-3-27b-it",
+      "quickMs": 5137,
+      "detailMs": 52003,
+      "durationMs": 57140,
+      "promptTokens": 630,
+      "completionTokens": 4409,
+      "estimatedCostUsd": 0.0018455000000000001,
+      "error": "fase de detalle: Generación no finalizada normalmente (length).",
+      "assessment": null,
+      "success": false
+    },
+    {
+      "id": "case-02-hyperfocus-cave-trap",
+      "name": "Caso 2: Trampa de hiperfoco en actividad de cueva",
+      "model": "google/gemma-3-27b-it",
+      "quickMs": 3412,
+      "detailMs": 10557,
+      "durationMs": 13969,
+      "promptTokens": 618,
+      "completionTokens": 1024,
+      "estimatedCostUsd": 0.00048994,
+      "error": null,
+      "assessment": {
+        "schemaValid": true,
+        "schemaIssues": [],
+        "checks": [
+          {
+            "name": "Hook de activación no vacío",
+            "passed": true
+          },
+          {
+            "name": "Escudo de foco no vacío",
+            "passed": true
+          },
+          {
+            "name": "Existe al menos una trampa de dopamina descrita (proxy estructural)",
+            "passed": true
+          }
+        ],
+        "passed": true,
+        "output": {
+          "trayDispatch": {
+            "personalBienestar": [],
+            "profesionalProductiva": [
+              "dashboard en Notion",
+              "3 facturas vencidas",
+              "llamar al banco por el bloqueo de cuenta",
+              "tutoriales de atajos de teclado"
+            ],
+            "familiarDomestica": [],
+            "socialComunitaria": []
+          },
+          "momentumMode": {
+            "activationHook": "Bebe un vaso de agua *lentamente*. Enfócate solo en la sensación del agua. 2 minutos.",
+            "cognitiveLoadLevel": "baja",
+            "antiDopamineTraps": [
+              {
+                "activity": "Búsqueda infinita de la paleta de colores perfecta",
+                "warning": "Esto es optimización prematura. Es fácil perderse en detalles que no impactan la urgencia."
+              },
+              {
+                "activity": "Tutoriales de atajos de teclado",
+                "warning": "Útil, pero no ahora. Es una distracción que te aleja de lo crítico."
+              }
+            ],
+            "singleFocusShield": "Manda *una* factura. Solo una. Luego, llama al banco."
+          },
+          "dependencyOrder": [
+            {
+              "step": 1,
+              "task": "Mandar las 3 facturas vencidas",
+              "dependsOn": [],
+              "whyThisOrder": "Evitar cargos por mora y quitarse el peso de encima."
+            },
+            {
+              "step": 2,
+              "task": "Llamar al banco por el bloqueo de cuenta",
+              "dependsOn": [
+                "1"
+              ],
+              "whyThisOrder": "Resolver el bloqueo es crucial para la estabilidad financiera."
+            },
+            {
+              "step": 3,
+              "task": "Volver a la paleta de colores del dashboard en Notion",
+              "dependsOn": [
+                "1",
+                "2"
+              ],
+              "whyThisOrder": "Esto es lo menos urgente y puede esperar a que se resuelvan los asuntos prioritarios."
+            }
+          ],
+          "microTasks": [
+            {
+              "originalTask": "Mandar las 3 facturas vencidas",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir el programa de facturación",
+                  "durationMinutes": 2,
+                  "actionableHook": "Haz clic en el icono del programa de facturación en tu escritorio."
+                },
+                {
+                  "stepTitle": "Seleccionar la primera factura vencida",
+                  "durationMinutes": 3,
+                  "actionableHook": "Buscar en la lista de facturas la más antigua vencida."
+                },
+                {
+                  "stepTitle": "Revisar datos de la factura y pulsar 'Enviar'",
+                  "durationMinutes": 2,
+                  "actionableHook": "Comprobar que el importe y el destinatario son correctos y hacer clic en 'Enviar'."
+                },
+                {
+                  "stepTitle": "Repetir para las facturas 2 y 3",
+                  "durationMinutes": 6,
+                  "actionableHook": "Seleccionar la siguiente factura vencida en la lista."
+                }
+              ]
+            },
+            {
+              "originalTask": "Llamar al banco por el bloqueo de cuenta",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Buscar el número de teléfono del banco",
+                  "durationMinutes": 2,
+                  "actionableHook": "Abrir la página web del banco o buscar el número en tu lista de contactos."
+                },
+                {
+                  "stepTitle": "Marcar el número del banco",
+                  "durationMinutes": 10,
+                  "actionableHook": "Levantar el teléfono y marcar el número."
+                },
+                {
+                  "stepTitle": "Explicar la situación al operador",
+                  "durationMinutes": 5,
+                  "actionableHook": "Cuando te conteste el operador, decir: 'Hola, necesito ayuda con el bloqueo de mi cuenta.'"
+                }
+              ]
+            },
+            {
+              "originalTask": "Volver a la paleta de colores del dashboard en Notion",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir Notion",
+                  "durationMinutes": 2,
+                  "actionableHook": "Haz clic en el icono de Notion en tu escritorio o en el navegador."
+                },
+                {
+                  "stepTitle": "Abrir el dashboard",
+                  "durationMinutes": 3,
+                  "actionableHook": "Selecciona el dashboard en tu lista de páginas."
+                },
+                {
+                  "stepTitle": "Buscar tutoriales de paletas de colores",
+                  "durationMinutes": 5,
+                  "actionableHook": "Escribe 'paletas de colores Notion' en Google."
+                }
+              ]
+            }
+          ]
+        },
+        "humanReview": [
+          "Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías).",
+          "Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada."
+        ]
+      },
+      "success": true
+    },
+    {
+      "id": "case-03-dependency-chain",
+      "name": "Caso 3: Cadena de dependencias",
+      "model": "google/gemma-3-27b-it",
+      "quickMs": 3468,
+      "detailMs": 11111,
+      "durationMs": 14579,
+      "promptTokens": 600,
+      "completionTokens": 1163,
+      "estimatedCostUsd": 0.0005432000000000001,
+      "error": null,
+      "assessment": {
+        "schemaValid": true,
+        "schemaIssues": [],
+        "checks": [
+          {
+            "name": "Hook de activación no vacío",
+            "passed": true
+          },
+          {
+            "name": "Escudo de foco no vacío",
+            "passed": true
+          },
+          {
+            "name": "Secuencia numerada 1..N con tarea y razón no vacías",
+            "passed": true
+          },
+          {
+            "name": "El primer paso no depende de nada pendiente",
+            "passed": true
+          }
+        ],
+        "passed": true,
+        "output": {
+          "trayDispatch": {
+            "personalBienestar": [],
+            "profesionalProductiva": [
+              "Desplegar nueva versión a producción",
+              "Correr migraciones en staging",
+              "Pedir credenciales a Juan",
+              "Avisar al equipo por Slack"
+            ],
+            "familiarDomestica": [],
+            "socialComunitaria": []
+          },
+          "momentumMode": {
+            "activationHook": "Bebe un vaso de agua. Literalmente, levántate y bebe un vaso de agua.",
+            "cognitiveLoadLevel": "baja",
+            "antiDopamineTraps": [
+              {
+                "activity": "Revisar Slack antes de beber agua",
+                "warning": "Slack es un pozo sin fondo. Primero el agua, *luego* Slack."
+              },
+              {
+                "activity": "Pensar en el despliegue completo",
+                "warning": "Demasiado grande. Un vaso de agua, y *luego* un paso."
+              }
+            ],
+            "singleFocusShield": "Solo necesito beber agua. Nada más. Luego, un paso a la vez."
+          },
+          "dependencyOrder": [
+            {
+              "step": 1,
+              "task": "Pedir credenciales a Juan",
+              "dependsOn": [],
+              "whyThisOrder": "Bloquea la ejecución de migraciones."
+            },
+            {
+              "step": 2,
+              "task": "Avisar al equipo por Slack",
+              "dependsOn": [],
+              "whyThisOrder": "Comunicación previa al despliegue."
+            },
+            {
+              "step": 3,
+              "task": "Correr las migraciones en staging",
+              "dependsOn": [
+                "Pedir credenciales a Juan"
+              ],
+              "whyThisOrder": "Depende de tener las credenciales."
+            },
+            {
+              "step": 4,
+              "task": "Desplegar la nueva versión a producción",
+              "dependsOn": [
+                "Correr las migraciones en staging",
+                "Avisar al equipo por Slack"
+              ],
+              "whyThisOrder": "Depende de migraciones completadas y equipo informado."
+            }
+          ],
+          "microTasks": [
+            {
+              "originalTask": "Pedir credenciales a Juan",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir app de mensajería (ej: Teams, WhatsApp)",
+                  "durationMinutes": 2,
+                  "actionableHook": "Busca a Juan en la barra de búsqueda."
+                },
+                {
+                  "stepTitle": "Escribir mensaje a Juan",
+                  "durationMinutes": 5,
+                  "actionableHook": "Escribe: 'Hola Juan, necesito las credenciales de staging para correr las migraciones. ¿Podrías pasármelas?'"
+                },
+                {
+                  "stepTitle": "Enviar mensaje",
+                  "durationMinutes": 10,
+                  "actionableHook": "Presiona el botón de enviar."
+                }
+              ]
+            },
+            {
+              "originalTask": "Avisar al equipo por Slack",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir Slack",
+                  "durationMinutes": 10,
+                  "actionableHook": "Haz clic en el icono de Slack en tu barra de tareas."
+                },
+                {
+                  "stepTitle": "Escribir mensaje al canal del equipo",
+                  "durationMinutes": 5,
+                  "actionableHook": "Escribe: 'Equipo, voy a correr las migraciones en staging antes de desplegar a producción. Les aviso antes de tocar cualquier cosa.'"
+                },
+                {
+                  "stepTitle": "Enviar mensaje",
+                  "durationMinutes": 10,
+                  "actionableHook": "Presiona el botón de enviar."
+                }
+              ]
+            },
+            {
+              "originalTask": "Correr las migraciones en staging",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir terminal/consola",
+                  "durationMinutes": 2,
+                  "actionableHook": "Busca 'terminal' en tu sistema operativo y ábrela."
+                },
+                {
+                  "stepTitle": "Ejecutar comando de migración",
+                  "durationMinutes": 5,
+                  "actionableHook": "Escribe el comando de migración (ej: `rails db:migrate`) y presiona Enter."
+                },
+                {
+                  "stepTitle": "Verificar migración",
+                  "durationMinutes": 5,
+                  "actionableHook": "Revisa la salida de la terminal para confirmar que las migraciones se ejecutaron correctamente."
+                }
+              ]
+            },
+            {
+              "originalTask": "Desplegar la nueva versión a producción",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir plataforma de despliegue (ej: Heroku, AWS)",
+                  "durationMinutes": 2,
+                  "actionableHook": "Abre tu navegador y ve a la URL de tu plataforma de despliegue."
+                },
+                {
+                  "stepTitle": "Iniciar el proceso de despliegue",
+                  "durationMinutes": 5,
+                  "actionableHook": "Haz clic en el botón 'Deploy' o similar."
+                },
+                {
+                  "stepTitle": "Monitorear el despliegue",
+                  "durationMinutes": 10,
+                  "actionableHook": "Observa el progreso del despliegue en la plataforma."
+                }
+              ]
+            }
+          ]
+        },
+        "humanReview": [
+          "Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías).",
+          "Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada."
+        ]
+      },
+      "success": true
+    },
+    {
+      "id": "case-04-microtask-breakdown",
+      "name": "Caso 4: Tarea monstruo que requiere micro-pasos",
+      "model": "google/gemma-3-27b-it",
+      "quickMs": 3604,
+      "detailMs": 3088,
+      "durationMs": 6692,
+      "promptTokens": 576,
+      "completionTokens": 546,
+      "estimatedCostUsd": 0.00029328,
+      "error": null,
+      "assessment": {
+        "schemaValid": true,
+        "schemaIssues": [],
+        "checks": [
+          {
+            "name": "Hook de activación no vacío",
+            "passed": true
+          },
+          {
+            "name": "Escudo de foco no vacío",
+            "passed": true
+          },
+          {
+            "name": "Micro-tareas y pasos no vacíos",
+            "passed": true
+          },
+          {
+            "name": "Micro-pasos de 2 a 10 minutos",
+            "passed": true
+          },
+          {
+            "name": "Cada micro-paso tiene título y hook (proxy estructural)",
+            "passed": true
+          }
+        ],
+        "passed": true,
+        "output": {
+          "trayDispatch": {
+            "personalBienestar": [],
+            "profesionalProductiva": [
+              "contabilidad",
+              "declaración mensual de impuestos (3 meses)"
+            ],
+            "familiarDomestica": [
+              "limpiar el cuarto"
+            ],
+            "socialComunitaria": [
+              "ver videos en YouTube"
+            ]
+          },
+          "momentumMode": {
+            "activationHook": "Pon una alarma para 2 minutos. Durante esos 2 minutos, solo respira profundamente. Inhala contando hasta 4, exhala contando hasta 6. Nada más.",
+            "cognitiveLoadLevel": "baja",
+            "antiDopamineTraps": [
+              {
+                "activity": "Limpiar el cuarto",
+                "warning": "Es una forma de evitar la tarea más difícil. Es entendible, pero no te acerca a lo que necesitas hacer."
+              },
+              {
+                "activity": "Ver videos en YouTube",
+                "warning": "Entretenimiento sin fin. Es fácil caer en esto, pero no te da la satisfacción de completar algo importante."
+              }
+            ],
+            "singleFocusShield": "Después de los 2 minutos de respiración, elige *solo* abrir el software de contabilidad. No lo uses, solo ábrelo. Ese es el único objetivo."
+          },
+          "dependencyOrder": [],
+          "microTasks": [
+            {
+              "originalTask": "Contabilidad y declaración mensual de impuestos de los últimos tres meses",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir el programa de contabilidad",
+                  "durationMinutes": 2,
+                  "actionableHook": "Haz doble clic en el icono del programa de contabilidad en tu escritorio."
+                },
+                {
+                  "stepTitle": "Abrir el archivo del mes más antiguo (ej: Julio)",
+                  "durationMinutes": 5,
+                  "actionableHook": "Ve al menú 'Archivo' y selecciona 'Abrir'. Navega hasta la carpeta donde guardas tus archivos de contabilidad y selecciona el archivo de Julio."
+                },
+                {
+                  "stepTitle": "Revisar las transacciones de Julio",
+                  "durationMinutes": 10,
+                  "actionableHook": "Desplázate por la lista de transacciones de Julio y busca cualquier cosa que no reconozcas."
+                }
+              ]
+            }
+          ]
+        },
+        "humanReview": [
+          "Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías).",
+          "Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada."
+        ]
+      },
+      "success": true
+    },
+    {
+      "id": "case-05-struggle-case-burnout",
+      "name": "Caso 5: Caso de dificultad — colapso sensorial vs. deber externo",
+      "model": "google/gemma-3-27b-it",
+      "quickMs": 3052,
+      "detailMs": 6225,
+      "durationMs": 9277,
+      "promptTokens": 626,
+      "completionTokens": 786,
+      "estimatedCostUsd": 0.00039578000000000004,
+      "error": null,
+      "assessment": {
+        "schemaValid": true,
+        "schemaIssues": [],
+        "checks": [
+          {
+            "name": "Hook de activación no vacío",
+            "passed": true
+          },
+          {
+            "name": "Escudo de foco no vacío",
+            "passed": true
+          }
+        ],
+        "passed": true,
+        "output": {
+          "trayDispatch": {
+            "personalBienestar": [
+              "Parálisis frente a la pantalla",
+              "Dificultad para respirar"
+            ],
+            "profesionalProductiva": [
+              "Reporte de ventas (entrega a las 5pm)"
+            ],
+            "familiarDomestica": [],
+            "socialComunitaria": [
+              "Investigar sobre acuarios marinos"
+            ]
+          },
+          "momentumMode": {
+            "activationHook": "5 respiraciones profundas. Inhala contando hasta 4, exhala contando hasta 6. Solo eso. Sin pensar en nada más.",
+            "cognitiveLoadLevel": "baja",
+            "antiDopamineTraps": [
+              {
+                "activity": "Investigar acuarios marinos",
+                "warning": "Es tentador saltar a algo que te gusta, pero ahora necesitas enfocarte en lo urgente. Los acuarios pueden esperar."
+              }
+            ],
+            "singleFocusShield": "Reporte de ventas. Solo el reporte. Ignora todo lo demás por ahora."
+          },
+          "dependencyOrder": [],
+          "microTasks": [
+            {
+              "originalTask": "Entregar reporte de ventas",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir el archivo del reporte de ventas",
+                  "durationMinutes": 2,
+                  "actionableHook": "Haz doble clic en el archivo del reporte de ventas en tu escritorio o en la carpeta donde lo guardaste."
+                },
+                {
+                  "stepTitle": "Revisar la última versión guardada",
+                  "durationMinutes": 5,
+                  "actionableHook": "Desplaza la vista hasta el final del documento para ver la fecha y hora de la última modificación."
+                },
+                {
+                  "stepTitle": "Guardar una copia de seguridad",
+                  "durationMinutes": 2,
+                  "actionableHook": "Presiona Ctrl+Shift+S (o Cmd+Shift+S en Mac) para guardar una copia del archivo con un nombre diferente (ej: 'ReporteVentas_backup_20260911')."
+                },
+                {
+                  "stepTitle": "Revisar la sección de resumen ejecutivo",
+                  "durationMinutes": 10,
+                  "actionableHook": "Desplaza la vista hasta la sección de resumen ejecutivo y léela en voz alta."
+                }
+              ]
+            },
+            {
+              "originalTask": "Investigar sobre acuarios marinos",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir una nueva pestaña en el navegador",
+                  "durationMinutes": 10,
+                  "actionableHook": "Haz clic en el icono '+' o en el botón 'Nueva pestaña' en tu navegador."
+                },
+                {
+                  "stepTitle": "Escribir 'acuarios marinos' en Google",
+                  "durationMinutes": 2,
+                  "actionableHook": "Haz clic en la barra de direcciones de Google y escribe 'acuarios marinos'."
+                },
+                {
+                  "stepTitle": "Seleccionar el primer resultado de Wikipedia",
+                  "durationMinutes": 5,
+                  "actionableHook": "Haz clic en el primer enlace que aparezca en los resultados de búsqueda de Google, que probablemente sea la página de Wikipedia sobre acuarios marinos."
+                }
+              ]
+            }
+          ]
+        },
+        "humanReview": [
+          "Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías).",
+          "Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada.",
+          "Caso de dificultad: revisar si prioriza regular el cuerpo sobre la entrega. Las notas del fixture son hipótesis, no observaciones."
+        ]
+      },
+      "success": true
+    }
+  ]
+}

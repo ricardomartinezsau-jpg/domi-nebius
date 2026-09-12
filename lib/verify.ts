@@ -53,7 +53,22 @@ export function verify(output: TriageOutput, ctx: VerifyContext): Rule[] {
     )
   }
 
-  // 2. Cada tarea grande tiene que quedar realmente partida.
+  // 2. El texto que lee la persona no puede traer restos del sistema: nombres
+  // internos de campos, asteriscos de formato, ni mayúsculas de grito. Los tres
+  // aparecieron en pruebas reales y los tres delatan la costura de la máquina.
+  const userFacing = [
+    output.momentumMode.activationHook,
+    output.momentumMode.singleFocusShield,
+    ...output.momentumMode.antiDopamineTraps.flatMap((trap) => [trap.activity, trap.warning]),
+    ...output.microTasks.flatMap((group) => group.atomicSteps.flatMap((step) => [step.stepTitle, step.actionableHook])),
+  ]
+  const TRAY_KEYS = /personalBienestar|profesionalProductiva|familiarDomestica|socialComunitaria/
+  add('no-schema-leak', !userFacing.some((text) => TRAY_KEYS.test(text)), 'El texto visible no puede contener los nombres internos de las bandejas.')
+  add('no-markup', !userFacing.some((text) => /\*|_{2,}|#{1,6}\s/.test(text)), 'El texto visible no lleva asteriscos ni marcas de formato: se lee tal cual.')
+  add('no-shouting', !userFacing.some((text) => /\b[A-ZÁÉÍÓÚÑ]{4,}\b/.test(text)), 'Nada en mayúsculas sostenidas: a alguien saturado le suena a grito.')
+  add('hook-is-one-action', output.momentumMode.activationHook.trim().length <= 140, 'El arranque es una sola frase de menos de 140 caracteres.')
+
+  // 3. Cada tarea grande tiene que quedar realmente partida.
   add(
     'micro-steps-present',
     output.microTasks.every((group) => group.atomicSteps.length > 0),

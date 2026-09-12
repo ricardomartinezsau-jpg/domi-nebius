@@ -1,13 +1,17 @@
 /**
- * Evaluación reproducible de Nebius Token Factory para el triage de Domi.
+ * Evaluación reproducible del triage de Domi sobre Nebius Token Factory.
  *
  * Sin red en --dry-run y --self-test. El modo real exige NEBIUS_API_KEY en
- * este proceso (no se lee de archivos .env implícitamente).
+ * este proceso (no se leen archivos .env implícitamente).
  *
- * Reutiliza el prompt y el esquema Zod reales de lib/triage.ts transpilándolo
- * en una sandbox que sustituye lib/nebius.ts por una función que solo captura
- * {system, prompt, schema} — así se construye la solicitud exacta que vería
- * el modelo sin hacer ninguna llamada de red al armar los casos.
+ * Mide el flujo REAL del producto, que son dos llamadas: la rápida (bandejas y
+ * arranque, lo que la persona ve primero) y la de detalle (dependencias y
+ * micro-pasos). Medir una sola llamada gorda daría un número que ningún
+ * usuario experimenta.
+ *
+ * Reutiliza el prompt y los esquemas reales de lib/triage.ts transpilándolo en
+ * una sandbox que sustituye lib/nebius.ts por una función que solo captura
+ * {system, prompt, schema}: se arma la solicitud exacta sin llamar a nadie.
  * @ts-check
  */
 import fs from 'node:fs'
@@ -26,9 +30,7 @@ const TRIAGE_PATH = path.join(ROOT, 'lib/triage.ts')
 const REPORT_PATH = path.join(ROOT, 'EVALUATION.md')
 const EVIDENCE_DIR = path.join(ROOT, 'evaluation-evidence')
 const BASE_URL = 'https://api.tokenfactory.nebius.com/v1'
-// Solo laboratorios occidentales, por decisión del proyecto. Gemma 3 es el
-// modelo por defecto; los demás existen para poder comparar con datos en vez
-// de con opinión. Confirma los identificadores con `npm run models`.
+// Solo laboratorios occidentales. Identificadores confirmados con `npm run models`.
 const CANDIDATE_MODELS = [
   'google/gemma-3-27b-it',
   'meta-llama/Llama-3.3-70B-Instruct',
@@ -38,10 +40,11 @@ const CANDIDATE_MODELS = [
 let MODEL = process.env.NEBIUS_MODEL?.trim() || CANDIDATE_MODELS[0]
 const MAX_OUTPUT_TOKENS = 4096
 const TIMEOUT_MS = 60_000
-const TEMPERATURE = 0.2 // Debe coincidir con lib/nebius.ts.
-// Precios de referencia históricos, NO verificados contra la tarifa vigente de Nebius.
+const TEMPERATURE = 0.2
+// Precios de referencia NO verificados contra la tarifa vigente.
 const REFERENCE_PRICING = { promptPerMillionUsd: 0.13, completionPerMillionUsd: 0.4, verified: false }
-const TARGETS = { averageLatencyMs: 3500, averageEstimatedCostUsd: 0.001 }
+// La fase rápida es la que la persona espera mirando la pantalla.
+const TARGETS = { quickLatencyMs: 5000, totalLatencyMs: 20000, averageEstimatedCostUsd: 0.002 }
 
 const fixtureSchema = z
   .object({
@@ -66,11 +69,6 @@ const fixtureSchema = z
   })
   .strict()
 
-/**
- * Carga solo código de este repositorio. Sustituye su import de './nebius'
- * por una función que captura {system, prompt, schema} sin red, sin
- * NEBIUS_API_KEY y sin tocar el SDK.
- */
 function loadTriageContract() {
   const source = fs.readFileSync(TRIAGE_PATH, 'utf8')
   const compiled = ts.transpileModule(source, {
@@ -92,11 +90,11 @@ function loadTriageContract() {
     { module, exports: module.exports, require: restrictedRequire },
     { filename: TRIAGE_PATH, timeout: 1000 },
   )
-  const schema = module.exports.triageSchema
-  if (!(schema instanceof z.ZodType) || typeof module.exports.runTriage !== 'function') {
-    throw new Error('No se encontraron triageSchema y runTriage en lib/triage.ts.')
+  const { triageSchema, quickSchema, detailSchema, runQuickTriage, runDetailTriage } = module.exports
+  if (!(triageSchema instanceof z.ZodType) || typeof runQuickTriage !== 'function' || typeof runDetailTriage !== 'function') {
+    throw new Error('lib/triage.ts no expone el contrato esperado.')
   }
-  return { schema, capture: module.exports.runTriage }
+  return { triageSchema, quickSchema, detailSchema, captureQuick: runQuickTriage, captureDetail: runDetailTriage }
 }
 
 function loadFixtures() {
@@ -105,8 +103,7 @@ function loadFixtures() {
   return fixtures
 }
 
-async function buildRequest(fixture, today, contract) {
-  const captured = await contract.capture({ rawDump: fixture.rawDump, today, locale: 'es' })
+async function toRequest(captured) {
   const format = await Output.object({ schema: captured.schema }).responseFormat
   if (format.type !== 'json' || !format.schema) throw new Error('Output.object no generó el esquema JSON esperado.')
   return {
@@ -121,15 +118,15 @@ async function buildRequest(fixture, today, contract) {
   }
 }
 
-/** Rúbrica determinística: mismo criterio para todo el mundo, sin un segundo LLM de por medio. */
+/** Rúbrica determinística: mismo criterio para todos, sin un segundo LLM de juez. */
 function assess(candidate, fixture, schema) {
   const parsed = schema.safeParse(candidate)
   const humanReview = [
-    'Clasificación semántica real de cada ítem del vaciado (esto solo confirma que las listas no están vacías).',
+    'Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías).',
     'Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada.',
   ]
   if (fixture.id === 'case-05-struggle-case-burnout') {
-    humanReview.push('Caso de dificultad: revisar manualmente si prioriza la regulación somática sobre la entrega. Las notas del fixture son una hipótesis, no una observación.')
+    humanReview.push('Caso de dificultad: revisar si prioriza regular el cuerpo sobre la entrega. Las notas del fixture son hipótesis, no observaciones.')
   }
   if (!parsed.success) {
     return { schemaValid: false, schemaIssues: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.code}`), checks: [], passed: false, output: null, humanReview }
@@ -151,13 +148,10 @@ function assess(candidate, fixture, schema) {
     check('Existe al menos una trampa de dopamina descrita (proxy estructural)', output.momentumMode.antiDopamineTraps.some((t) => Boolean(t.activity.trim() && t.warning.trim())))
   }
   if (expected.orderedSequence) {
-    check(
-      'Secuencia numerada 1..N con tarea y razón no vacías',
-      output.dependencyOrder.length > 0 && output.dependencyOrder.every((step, i) => step.step === i + 1 && Boolean(step.task.trim() && step.whyThisOrder.trim())),
-    )
+    check('Secuencia numerada 1..N con tarea y razón no vacías', output.dependencyOrder.length > 0 && output.dependencyOrder.every((s, i) => s.step === i + 1 && Boolean(s.task.trim() && s.whyThisOrder.trim())))
   }
   if (expected.firstActionIsPrerequisite) {
-    check('El primer paso no depende de nada pendiente (es el punto de partida real)', output.dependencyOrder.length > 0 && output.dependencyOrder[0].dependsOn.length === 0)
+    check('El primer paso no depende de nada pendiente', output.dependencyOrder.length > 0 && output.dependencyOrder[0].dependsOn.length === 0)
   }
   if (expected.microTasksGenerated) {
     check('Micro-tareas y pasos no vacíos', output.microTasks.length > 0 && output.microTasks.every((g) => Boolean(g.originalTask.trim()) && g.atomicSteps.length > 0))
@@ -173,20 +167,22 @@ function assess(candidate, fixture, schema) {
   return { schemaValid: true, schemaIssues: [], checks, passed: checks.every((c) => c.passed), output, humanReview }
 }
 
-const usageSchema = z.object({ prompt_tokens: z.number().int().nonnegative(), completion_tokens: z.number().int().nonnegative(), total_tokens: z.number().int().nonnegative().optional() })
-const responseSchema = z.object({ choices: z.array(z.object({ message: z.object({ content: z.string().nullable() }), finish_reason: z.string().nullable().optional() })).min(1), usage: z.unknown().optional() })
+const usageSchema = z.object({ prompt_tokens: z.number().int().nonnegative(), completion_tokens: z.number().int().nonnegative() })
+const responseSchema = z.object({
+  choices: z.array(z.object({ message: z.object({ content: z.string().nullable() }), finish_reason: z.string().nullable().optional() })).min(1),
+  usage: z.unknown().optional(),
+})
 
-function readUsage(usage) {
+const readUsage = (usage) => {
   const parsed = usageSchema.safeParse(usage)
-  return parsed.success ? { promptTokens: parsed.data.prompt_tokens, completionTokens: parsed.data.completion_tokens, totalTokens: parsed.data.total_tokens ?? null } : null
+  return parsed.success ? { promptTokens: parsed.data.prompt_tokens, completionTokens: parsed.data.completion_tokens } : null
 }
+const estimatedCost = (usage) =>
+  usage ? (usage.promptTokens * REFERENCE_PRICING.promptPerMillionUsd + usage.completionTokens * REFERENCE_PRICING.completionPerMillionUsd) / 1_000_000 : null
 
-function estimatedCost(usage) {
-  return usage ? (usage.promptTokens * REFERENCE_PRICING.promptPerMillionUsd + usage.completionTokens * REFERENCE_PRICING.completionPerMillionUsd) / 1_000_000 : null
-}
-
-async function callNebius(fixture, request, apiKey, schema, fetchImpl = fetch, timeoutMs = TIMEOUT_MS) {
-  const result = { id: fixture.id, name: fixture.name, durationMs: 0, responseCompleted: false, httpStatus: null, finishReason: null, usage: null, estimatedCostUsd: null, error: null, assessment: null, success: false }
+/** Una llamada. Devuelve el objeto ya parseado o un error contenido. */
+async function callOnce(request, apiKey, fetchImpl, timeoutMs) {
+  const out = { durationMs: 0, httpStatus: null, finishReason: null, usage: null, error: null, data: null }
   const started = performance.now()
   try {
     const response = await fetchImpl(`${BASE_URL}/chat/completions`, {
@@ -195,146 +191,185 @@ async function callNebius(fixture, request, apiKey, schema, fetchImpl = fetch, t
       body: JSON.stringify(request),
       signal: AbortSignal.timeout(timeoutMs),
     })
-    result.httpStatus = response.status
+    out.httpStatus = response.status
     const body = await response.text()
-    result.responseCompleted = true
     if (!response.ok) {
-      result.error = `HTTP ${response.status}; cuerpo omitido para proteger credenciales.`
-      return result
+      out.error = `HTTP ${response.status}; cuerpo omitido para proteger credenciales.`
+      return out
     }
     let envelope
     try {
       envelope = responseSchema.safeParse(JSON.parse(body))
     } catch {
-      result.error = 'Respuesta HTTP no es JSON válido.'
-      return result
+      out.error = 'Respuesta HTTP no es JSON válido.'
+      return out
     }
     if (!envelope.success) {
-      result.error = 'Respuesta HTTP sin choices/message válidos.'
-      return result
+      out.error = 'Respuesta HTTP sin choices/message válidos.'
+      return out
     }
-    result.usage = readUsage(envelope.data.usage)
-    result.estimatedCostUsd = estimatedCost(result.usage)
+    out.usage = readUsage(envelope.data.usage)
     const choice = envelope.data.choices[0]
-    result.finishReason = choice.finish_reason ?? null
+    out.finishReason = choice.finish_reason ?? null
     if (choice.finish_reason !== 'stop') {
-      result.error = `Generación no finalizada normalmente (${choice.finish_reason ?? 'sin finish_reason'}).`
-      return result
+      out.error = `Generación no finalizada normalmente (${choice.finish_reason ?? 'sin finish_reason'}).`
+      return out
     }
     if (!choice.message.content) {
-      result.error = 'Respuesta del modelo vacía.'
-      return result
+      out.error = 'Respuesta del modelo vacía.'
+      return out
     }
-    let output
     try {
-      output = JSON.parse(choice.message.content)
+      out.data = JSON.parse(choice.message.content)
     } catch {
-      result.error = 'Contenido del modelo no es JSON válido.'
-      return result
+      out.error = 'Contenido del modelo no es JSON válido.'
     }
-    result.assessment = assess(output, fixture, schema)
-    result.success = result.assessment.passed
-    if (!result.success) result.error = 'Falló el contrato Zod o una comprobación determinística.'
   } catch (error) {
-    result.error = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError') ? `Tiempo de espera agotado (${timeoutMs} ms).` : 'Fallo de red; detalle omitido para proteger credenciales.'
+    out.error = error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')
+      ? `Tiempo de espera agotado (${timeoutMs} ms).`
+      : 'Fallo de red; detalle omitido para proteger credenciales.'
   } finally {
-    result.durationMs = Math.round(performance.now() - started)
+    out.durationMs = Math.round(performance.now() - started)
   }
+  return out
+}
+
+/** Un caso completo: fase rápida + fase de detalle, como lo vive el producto. */
+async function runCase(fixture, today, contract, apiKey, fetchImpl = fetch, timeoutMs = TIMEOUT_MS) {
+  const result = {
+    id: fixture.id, name: fixture.name, model: MODEL,
+    quickMs: 0, detailMs: 0, durationMs: 0,
+    promptTokens: 0, completionTokens: 0, estimatedCostUsd: null,
+    error: null, assessment: null, success: false,
+  }
+
+  const quickRequest = await toRequest(await contract.captureQuick({ rawDump: fixture.rawDump, today, locale: 'es' }))
+  const quick = await callOnce(quickRequest, apiKey, fetchImpl, timeoutMs)
+  result.quickMs = quick.durationMs
+  if (quick.usage) {
+    result.promptTokens += quick.usage.promptTokens
+    result.completionTokens += quick.usage.completionTokens
+  }
+  if (quick.error || !quick.data) {
+    result.error = `fase rápida: ${quick.error ?? 'sin datos'}`
+    result.durationMs = result.quickMs
+    result.estimatedCostUsd = estimatedCost(quick.usage)
+    return result
+  }
+
+  const parsedQuick = contract.quickSchema.safeParse(quick.data)
+  if (!parsedQuick.success) {
+    result.error = 'fase rápida: no cumple su contrato.'
+    result.durationMs = result.quickMs
+    return result
+  }
+
+  const detailRequest = await toRequest(await contract.captureDetail({ rawDump: fixture.rawDump, today, locale: 'es' }, parsedQuick.data))
+  const detail = await callOnce(detailRequest, apiKey, fetchImpl, timeoutMs)
+  result.detailMs = detail.durationMs
+  if (detail.usage) {
+    result.promptTokens += detail.usage.promptTokens
+    result.completionTokens += detail.usage.completionTokens
+  }
+  result.durationMs = result.quickMs + result.detailMs
+  result.estimatedCostUsd = estimatedCost({ promptTokens: result.promptTokens, completionTokens: result.completionTokens })
+
+  if (detail.error || !detail.data) {
+    result.error = `fase de detalle: ${detail.error ?? 'sin datos'}`
+    return result
+  }
+
+  result.assessment = assess({ ...parsedQuick.data, ...detail.data }, fixture, contract.triageSchema)
+  result.success = result.assessment.passed
+  if (!result.success) result.error = 'Falló el contrato Zod o una comprobación determinística.'
   return result
 }
 
 function summarize(results) {
-  const completed = results.filter((r) => r.responseCompleted && r.httpStatus === 200 && r.finishReason === 'stop')
-  const withUsage = results.filter((r) => r.estimatedCostUsd !== null)
-  const meanLatencyMs = completed.length ? Math.round(completed.reduce((sum, r) => sum + r.durationMs, 0) / completed.length) : null
-  const knownEstimatedCostUsd = withUsage.reduce((sum, r) => sum + r.estimatedCostUsd, 0)
+  const completedQuick = results.filter((r) => r.quickMs > 0 && !String(r.error ?? '').startsWith('fase rápida'))
+  const completedAll = results.filter((r) => r.assessment)
+  const withCost = results.filter((r) => r.estimatedCostUsd !== null)
+  const mean = (rows, key) => (rows.length ? Math.round(rows.reduce((sum, r) => sum + r[key], 0) / rows.length) : null)
   return {
     attempted: results.length,
     passed: results.filter((r) => r.success).length,
     schemaValid: results.filter((r) => r.assessment?.schemaValid).length,
-    completedResponses: completed.length,
-    meanLatencyMs,
-    usageCoverage: withUsage.length,
-    meanEstimatedCostUsd: withUsage.length === results.length && results.length ? knownEstimatedCostUsd / results.length : null,
+    meanQuickMs: mean(completedQuick, 'quickMs'),
+    meanTotalMs: mean(completedAll, 'durationMs'),
+    meanEstimatedCostUsd: withCost.length === results.length && results.length ? withCost.reduce((s, r) => s + r.estimatedCostUsd, 0) / results.length : null,
   }
 }
 
 const escapeMarkdown = (s) => s.replace(/[|`<>[\]*_]/g, '\\$&').replace(/[\r\n]+/g, ' ')
-const money = (amount) => (amount === null ? 'N/D' : `$${amount.toFixed(6)} USD`)
-const hashFile = (file) => createHash('sha256').update(fs.readFileSync(file)).digest('hex')
+const money = (a) => (a === null ? 'N/D' : `$${a.toFixed(6)} USD`)
+const hashFile = (f) => createHash('sha256').update(fs.readFileSync(f)).digest('hex')
 
 function writeReport(results, fixtures, startedAt, today) {
   const summary = summarize(results)
   const runId = `${startedAt.replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}`
-  const evidencePath = path.join(EVIDENCE_DIR, `${runId}.json`)
   fs.mkdirSync(EVIDENCE_DIR, { recursive: true })
   fs.writeFileSync(
-    evidencePath,
+    path.join(EVIDENCE_DIR, `${runId}.json`),
     JSON.stringify(
       {
-        runId,
-        startedAt,
-        finishedAt: new Date().toISOString(),
-        nodeVersion: process.version,
-        endpoint: `${BASE_URL}/chat/completions`,
-        model: MODEL,
-        settings: { maxOutputTokens: MAX_OUTPUT_TOKENS, timeoutMs: TIMEOUT_MS, temperature: TEMPERATURE, contextDate: today },
-        referencePricing: REFERENCE_PRICING,
-        targets: TARGETS,
+        runId, startedAt, finishedAt: new Date().toISOString(), nodeVersion: process.version,
+        endpoint: `${BASE_URL}/chat/completions`, model: MODEL,
+        settings: { maxOutputTokens: MAX_OUTPUT_TOKENS, timeoutMs: TIMEOUT_MS, temperature: TEMPERATURE, contextDate: today, phases: 2 },
+        referencePricing: REFERENCE_PRICING, targets: TARGETS,
         provenance: { fixturesSha256: hashFile(FIXTURES_PATH), triageSourceSha256: hashFile(TRIAGE_PATH) },
-        fixtures,
-        summary,
-        results,
+        fixtures, summary, results,
       },
-      null,
-      2,
+      null, 2,
     ) + '\n',
     { encoding: 'utf8', flag: 'wx' },
   )
 
-  const latencyStatus = summary.completedResponses !== summary.attempted || summary.meanLatencyMs === null ? 'Incompleto' : summary.meanLatencyMs < TARGETS.averageLatencyMs ? 'Cumple objetivo' : 'No cumple objetivo'
-  const costStatus = summary.meanEstimatedCostUsd === null ? 'Incompleto' : summary.meanEstimatedCostUsd < TARGETS.averageEstimatedCostUsd ? 'Dentro de referencia; tarifa sin verificar' : 'Fuera de referencia; tarifa sin verificar'
+  const quickStatus = summary.meanQuickMs === null ? 'Incompleto' : summary.meanQuickMs < TARGETS.quickLatencyMs ? 'Cumple objetivo' : 'No cumple objetivo'
 
-  const markdown = `# Evaluación Nebius — Domi (MVP mínimo)
+  const markdown = `# Evaluación Nebius — Domi
 
 Fecha: ${startedAt}. Modelo: \`${MODEL}\`.
 
-Metodología: rúbrica determinística por caso (no un segundo LLM como juez), inspirada en el
-patrón de evaluación pointwise del notebook \`day-1-evaluation-and-structured-output.ipynb\`
-del curso de 5 días de GenAI de Google/Kaggle. Se eligió determinística y no LLM-juez a
-propósito: es gratis, reproducible bit a bit, y cada aprobación se puede explicar señalando
-la línea de código que la verificó — más defendible ante un jurado que "otro modelo dijo que
-está bien".
+## Qué se mide y por qué
 
-Evidencia completa de esta corrida: [\`${runId}.json\`](evaluation-evidence/${runId}.json)
-(sin credenciales; incluye solicitudes, respuestas, fallos, uso de tokens y hashes de los
-archivos evaluados).
+El producto hace **dos** llamadas, no una: la **fase rápida** devuelve las 4 bandejas y
+el arranque —lo que la persona ve y con lo que actúa— y la **fase de detalle** devuelve la
+secuencia de dependencias y los micro-pasos. Se partió así después de medir: pedir todo en
+una sola respuesta daba entre 9 y 20 segundos según el modelo, y uno de los candidatos se
+quedaba sin espacio de salida a media frase. Para alguien con disfunción ejecutiva, veinte
+segundos frente a una pantalla en blanco es donde se pierde la sesión.
+
+La rúbrica es determinística por caso (no un segundo modelo juzgando al primero), inspirada
+en el patrón de evaluación pointwise del notebook \`day-1-evaluation-and-structured-output\`
+del curso de GenAI de Google/Kaggle. Se eligió así a propósito: es gratis, reproducible, y
+cada aprobación se puede señalar con el dedo en el código que la verificó.
+
+Evidencia completa y reproducible: [\`${runId}.json\`](evaluation-evidence/${runId}.json).
 
 ## Mediciones
 
 | Métrica | Resultado | Alcance |
 | --- | --- | --- |
-| Generaciones completas | ${summary.completedResponses}/${summary.attempted} | HTTP 200 y finish_reason=stop |
-| Latencia media | ${summary.meanLatencyMs ?? 'N/D'} ms | objetivo <${TARGETS.averageLatencyMs} ms: ${latencyStatus} |
-| Costo medio estimado | ${money(summary.meanEstimatedCostUsd)} | ${costStatus} |
-| Conformidad de esquema (Zod) | ${summary.schemaValid}/${summary.attempted} | Contrato estructural |
-| Contrato + rúbrica determinística | ${summary.passed}/${summary.attempted} | No equivale a precisión semántica completa |
+| Casos que pasan contrato + rúbrica | ${summary.passed}/${summary.attempted} | No equivale a precisión semántica completa |
+| Conformidad de esquema | ${summary.schemaValid}/${summary.attempted} | Contrato estructural de ambas fases |
+| **Latencia de la fase rápida** | **${summary.meanQuickMs ?? 'N/D'} ms** | Lo que la persona espera mirando; objetivo <${TARGETS.quickLatencyMs} ms: ${quickStatus} |
+| Latencia total (ambas fases) | ${summary.meanTotalMs ?? 'N/D'} ms | La segunda fase llega cuando ya arrancó |
+| Costo medio por vaciado | ${money(summary.meanEstimatedCostUsd)} | Suma de las dos llamadas |
 
-El costo usa precios de referencia sin verificar: $${REFERENCE_PRICING.promptPerMillionUsd}/M
-tokens de entrada y $${REFERENCE_PRICING.completionPerMillionUsd}/M de salida. No representa
-facturación real de la cuenta.
+Los precios de referencia ($${REFERENCE_PRICING.promptPerMillionUsd}/M entrada,
+$${REFERENCE_PRICING.completionPerMillionUsd}/M salida) **no están verificados** contra la
+tarifa vigente y no representan facturación real.
 
 ## Resultados por caso
 
 ${results
-    .map((result) => {
-      const a = result.assessment
-      const output = a?.output
-      return `### ${escapeMarkdown(result.name)}
+    .map((r) => {
+      const a = r.assessment
+      return `### ${escapeMarkdown(r.name)}
 
-- Estado: ${result.success ? 'PASA' : 'FALLA'} · duración: ${result.durationMs} ms · HTTP: ${result.httpStatus ?? 'N/D'}.
-- Tokens: ${result.usage ? `${result.usage.promptTokens} entrada / ${result.usage.completionTokens} salida` : 'N/D'} · costo estimado: ${money(result.estimatedCostUsd)}.
-${result.error ? `- Error: ${escapeMarkdown(result.error)}.\n` : ''}${a?.schemaIssues.length ? `- Errores de esquema: ${a.schemaIssues.map(escapeMarkdown).join('; ')}.\n` : ''}${output ? `- Hook de activación observado: ${escapeMarkdown(output.momentumMode.activationHook)}.\n` : ''}${a ? a.checks.map((c) => `- ${c.passed ? 'PASA' : 'FALLA'}: ${escapeMarkdown(c.name)}.\n`).join('') : ''}
+- Estado: ${r.success ? 'PASA' : 'FALLA'} · rápida: ${r.quickMs} ms · detalle: ${r.detailMs} ms · total: ${r.durationMs} ms.
+- Tokens: ${r.promptTokens} entrada / ${r.completionTokens} salida · costo estimado: ${money(r.estimatedCostUsd)}.
+${r.error ? `- Error: ${escapeMarkdown(r.error)}.\n` : ''}${a?.schemaIssues.length ? `- Errores de esquema: ${a.schemaIssues.map(escapeMarkdown).join('; ')}.\n` : ''}${a?.output ? `- Arranque observado: ${escapeMarkdown(a.output.momentumMode.activationHook)}.\n` : ''}${a ? a.checks.map((c) => `- ${c.passed ? 'PASA' : 'FALLA'}: ${escapeMarkdown(c.name)}.\n`).join('') : ''}
 Revisión humana pendiente: ${(a?.humanReview ?? ['No hubo salida válida evaluable.']).map(escapeMarkdown).join(' ')}
 `
     })
@@ -342,25 +377,27 @@ Revisión humana pendiente: ${(a?.humanReview ?? ['No hubo salida válida evalua
 ## Caso de dificultad
 
 **case-05-struggle-case-burnout**: la persona describe parálisis por sobrecarga sensorial
-("mi cabeza va a mil por hora... no puedo respirar bien") junto con un compromiso externo
-("prometí entregar el reporte de ventas hoy a las 5pm"). No hay aserciones automáticas duras
-para este caso — el resultado completo queda en la evidencia de esta corrida para revisión
-humana: si el modelo prioriza la entrega sobre la regulación del estado de la persona, es una
-falla de producto real aunque el JSON sea válido.
+("mi cabeza va a mil por hora... no puedo respirar bien") junto a un compromiso externo
+("prometí entregar el reporte de ventas hoy a las 5pm"). El riesgo medido no es que el JSON
+salga mal: es que el modelo empuje la entrega por encima del estado de la persona. Por eso
+existe una regla determinística fuera del modelo (\`somatic-override\` en \`lib/verify.ts\`)
+que rechaza el resultado si detecta señales de colapso físico y el arranque no regula el
+cuerpo primero. El resultado completo de cada corrida queda en la evidencia para revisión
+humana.
 
 ## Límites y reproducción
 
-Se ejecutan ${results.length} fixtures sintéticos, en secuencia, sin reintentos, con máximo
-${MAX_OUTPUT_TOKENS} tokens de salida y ${TIMEOUT_MS} ms por llamada. Se reutiliza
-\`lib/triage.ts\` real (mismo prompt y esquema que usa la app en producción, no una copia).
-No cubre percepción de utilidad ni latencia end-to-end del navegador.
+${results.length} fixtures sintéticos, en secuencia, sin reintentos, máximo ${MAX_OUTPUT_TOKENS}
+tokens por llamada y ${TIMEOUT_MS} ms de espera. Se reutiliza \`lib/triage.ts\` real (mismos
+prompts y esquemas que la app), no una copia. No cubre percepción de utilidad ni latencia
+end-to-end del navegador.
 
-Validación local sin red: \`node tests/eval.mjs --self-test\` y \`node tests/eval.mjs --dry-run\`.
-Para repetir con la API real: \`NEBIUS_API_KEY=tu_clave node tests/eval.mjs\`. Código de
-salida: 0 si pasan todos los checks automáticos, 1 si alguno falla, 2 si falta configuración.
+Sin red: \`node tests/eval.mjs --self-test\` y \`node tests/eval.mjs --dry-run\`.
+Con la API real: \`NEBIUS_API_KEY=... node tests/eval.mjs [--model=<id>]\`.
+Código de salida: 0 si todo pasa, 1 si algo falla, 2 si falta configuración.
 `
   fs.writeFileSync(REPORT_PATH, markdown, 'utf8')
-  console.log(`Reporte: ${REPORT_PATH}\nEvidencia: ${evidencePath}`)
+  console.log(`Reporte: ${REPORT_PATH}`)
 }
 
 /** Pruebas locales deterministas: fetch inyectado, nunca la red real. */
@@ -369,47 +406,63 @@ async function selfTest() {
   const fixtures = loadFixtures()
   const fixture = fixtures.find((f) => f.expected.microTasksGenerated)
   assert.ok(fixture)
-  const request = await buildRequest(fixture, '2026-09-11', contract)
 
-  const valid = {
+  const quick = {
     trayDispatch: { personalBienestar: [], profesionalProductiva: ['Contabilidad'], familiarDomestica: [], socialComunitaria: [] },
+    momentumMode: { activationHook: 'Abre la carpeta durante dos minutos.', cognitiveLoadLevel: 'alta', antiDopamineTraps: [], singleFocusShield: 'Deja los videos para después.' },
+  }
+  const detail = {
     dependencyOrder: [{ step: 1, task: 'Abrir carpeta', dependsOn: [], whyThisOrder: 'Localizar recibos.' }],
     microTasks: [{ originalTask: 'Contabilidad', atomicSteps: [{ stepTitle: 'Abrir carpeta', durationMinutes: 2, actionableHook: 'Haz clic en la carpeta de recibos.' }] }],
-    momentumMode: { activationHook: 'Abre la carpeta durante dos minutos.', cognitiveLoadLevel: 'alta', antiDopamineTraps: [], singleFocusShield: 'Deja los videos para después de abrir la carpeta.' },
   }
-  assert.equal(assess(valid, fixture, contract.schema).passed, true)
-  assert.equal(assess({ ...valid, momentumMode: undefined }, fixture, contract.schema).schemaValid, false)
-  assert.equal(assess({ ...valid, microTasks: [{ originalTask: 'X', atomicSteps: [{ stepTitle: 'X', durationMinutes: 11, actionableHook: 'X' }] }] }, fixture, contract.schema).schemaValid, false)
-  assert.equal(assess({ ...valid, microTasks: [] }, fixture, contract.schema).passed, false)
 
-  const requestText = JSON.stringify(request)
-  assert.ok(requestText.includes(fixture.rawDump))
-  assert.ok(requestText.includes('FECHA DE HOY: 2026-09-11'))
-  assert.equal(request.max_tokens, MAX_OUTPUT_TOKENS)
+  assert.equal(assess({ ...quick, ...detail }, fixture, contract.triageSchema).passed, true)
+  assert.equal(assess({ ...quick, momentumMode: undefined, ...detail }, fixture, contract.triageSchema).schemaValid, false)
+  assert.equal(assess({ ...quick, ...detail, microTasks: [] }, fixture, contract.triageSchema).passed, false)
+  assert.equal(
+    assess({ ...quick, ...detail, microTasks: [{ originalTask: 'X', atomicSteps: [{ stepTitle: 'X', durationMinutes: 11, actionableHook: 'X' }] }] }, fixture, contract.triageSchema).schemaValid,
+    false,
+  )
 
-  const fake = (content, usage, finishReason = 'stop') => async () =>
-    new Response(JSON.stringify({ choices: [{ message: { content: typeof content === 'string' ? content : JSON.stringify(content) }, finish_reason: finishReason }], usage }))
+  const quickRequest = await toRequest(await contract.captureQuick({ rawDump: fixture.rawDump, today: '2026-09-11', locale: 'es' }))
+  assert.ok(JSON.stringify(quickRequest).includes(fixture.rawDump))
+  assert.ok(JSON.stringify(quickRequest).includes('FECHA DE HOY: 2026-09-11'))
+  // La fase rápida no debe pedir micro-pasos: si los pide, no es rápida.
+  assert.ok(!JSON.stringify(quickRequest.response_format).includes('microTasks'))
 
-  const good = await callNebius(fixture, request, 'offline-placeholder', contract.schema, fake(valid, { prompt_tokens: 100, completion_tokens: 200 }))
+  const detailRequest = await toRequest(await contract.captureDetail({ rawDump: fixture.rawDump, today: '2026-09-11', locale: 'es' }, quick))
+  assert.ok(JSON.stringify(detailRequest.response_format).includes('microTasks'))
+
+  // La memoria recuperada tiene que llegar al prompt; si no, el producto no recuerda.
+  const withMemory = await contract.captureQuick({ rawDump: fixture.rawDump, today: '2026-09-11', locale: 'es', recalled: [{ title: 'Declarar impuestos', status: 'open', timesResurfaced: 4 }] })
+  assert.ok(withMemory.prompt.includes('Declarar impuestos'))
+  assert.ok(withMemory.prompt.includes('4 veces'))
+
+  const phased = (usage) => {
+    let call = 0
+    return async () => {
+      call += 1
+      const payload = call === 1 ? quick : detail
+      return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(payload) }, finish_reason: 'stop' }], usage }))
+    }
+  }
+
+  const good = await runCase(fixture, '2026-09-11', contract, 'offline-placeholder', phased({ prompt_tokens: 100, completion_tokens: 200 }))
   assert.equal(good.success, true)
-  const missingUsage = await callNebius(fixture, request, 'offline-placeholder', contract.schema, fake(valid, undefined))
-  assert.equal(missingUsage.estimatedCostUsd, null)
-  const truncated = await callNebius(fixture, request, 'offline-placeholder', contract.schema, fake(valid, undefined, 'length'))
-  assert.equal(truncated.success, false)
-  const badJson = await callNebius(fixture, request, 'offline-placeholder', contract.schema, fake('{', undefined))
-  assert.equal(badJson.success, false)
-  const httpError = await callNebius(fixture, request, 'offline-placeholder', contract.schema, async () => new Response('sensitive-body', { status: 429 }))
+  assert.equal(good.promptTokens, 200)
+
+  const httpError = await runCase(fixture, '2026-09-11', contract, 'offline-placeholder', async () => new Response('sensitive-body', { status: 429 }))
   assert.equal(httpError.success, false)
   assert.ok(!JSON.stringify(httpError).includes('sensitive-body'))
-  const timeout = await callNebius(fixture, request, 'offline-placeholder', contract.schema, async () => { throw new DOMException('private-detail', 'TimeoutError') }, 1)
-  assert.equal(timeout.responseCompleted, false)
+
+  const timeout = await runCase(fixture, '2026-09-11', contract, 'offline-placeholder', async () => { throw new DOMException('private-detail', 'TimeoutError') }, 1)
+  assert.equal(timeout.success, false)
   assert.ok(!JSON.stringify(timeout).includes('private-detail'))
 
-  const summary = summarize([{ ...good, durationMs: 120 }, { ...timeout, durationMs: 60000 }])
-  assert.equal(summary.meanLatencyMs, 120)
-  assert.equal(summary.meanEstimatedCostUsd, null)
+  const summary = summarize([{ ...good, quickMs: 120, durationMs: 300 }, timeout])
+  assert.equal(summary.meanQuickMs, 120)
   assert.equal(summary.passed, 1)
-  console.log('SELF-TEST OK: contrato, rúbrica, fixtures, JSON inválido, truncamiento, HTTP, timeout y uso ausente. 0 llamadas externas; reporte no sobrescrito.')
+  console.log('SELF-TEST OK: dos fases, contrato, rúbrica, memoria en el prompt, HTTP, timeout y credenciales contenidas. 0 llamadas externas.')
 }
 
 async function main() {
@@ -426,29 +479,29 @@ async function main() {
   const contract = loadTriageContract()
   const startedAt = new Date().toISOString()
   const today = startedAt.slice(0, 10)
-  const requests = await Promise.all(fixtures.map((f) => buildRequest(f, today, contract)))
-  console.log(`Plan: ${fixtures.length} llamadas secuenciales a ${MODEL}; max_tokens=${MAX_OUTPUT_TOKENS}; timeout=${TIMEOUT_MS}ms; temperature=${TEMPERATURE}.`)
-  if (args[0] === '--dry-run') {
-    console.log('DRY RUN OK: fixtures, prompt y esquema listos. 0 llamadas externas; reporte intacto.')
+  console.log(`Plan: ${fixtures.length} casos x 2 llamadas a ${MODEL}; max_tokens=${MAX_OUTPUT_TOKENS}; timeout=${TIMEOUT_MS}ms.`)
+  if (flags[0] === '--dry-run') {
+    await toRequest(await contract.captureQuick({ rawDump: fixtures[0].rawDump, today, locale: 'es' }))
+    console.log('DRY RUN OK: fixtures, prompts y esquemas listos. 0 llamadas externas.')
     return
   }
   const apiKey = process.env.NEBIUS_API_KEY?.trim()
   if (!apiKey) {
-    console.error('NEBIUS_API_KEY no está configurada en este proceso. No la pegues en el chat.')
+    console.error('NEBIUS_API_KEY no está configurada en este proceso.')
     process.exitCode = 2
     return
   }
   const results = []
-  for (const [index, fixture] of fixtures.entries()) {
-    const result = await callNebius(fixture, requests[index], apiKey, contract.schema)
+  for (const fixture of fixtures) {
+    const result = await runCase(fixture, today, contract, apiKey)
     results.push(result)
-    console.log(`${result.success ? 'PASA' : 'FALLA'} ${fixture.id}: ${result.durationMs} ms; ${result.error ?? 'contrato y checks automáticos válidos'}`)
+    console.log(`${result.success ? 'PASA' : 'FALLA'} ${fixture.id}: rápida ${result.quickMs} ms, total ${result.durationMs} ms${result.error ? ` — ${result.error}` : ''}`)
   }
   writeReport(results, fixtures, startedAt, today)
   process.exitCode = results.every((r) => r.success) ? 0 : 1
 }
 
 main().catch((error) => {
-  console.error(error instanceof z.ZodError ? 'Fixtures locales inválidos; revisa su contrato.' : error instanceof Error ? error.message : 'Falló la configuración del evaluador.')
+  console.error(error instanceof z.ZodError ? 'Fixtures locales inválidos.' : error instanceof Error ? error.message : 'Falló la configuración del evaluador.')
   process.exitCode = 1
 })
