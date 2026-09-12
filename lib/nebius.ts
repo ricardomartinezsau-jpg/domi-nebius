@@ -70,7 +70,14 @@ export async function generateStructured<T extends z.ZodTypeAny>(args: {
       promptTokens: usage?.inputTokens ?? null,
       completionTokens: usage?.outputTokens ?? null,
     }
-  } catch {
+  } catch (error) {
+    // El mensaje crudo del SDK puede traer el prompt o la respuesta del modelo,
+    // así que no sale de aquí. Lo que sí sale es de qué tipo fue el fallo y con
+    // qué código HTTP: sin eso, un error en producción es indistinguible de
+    // otro y no hay forma de arreglarlo.
+    const kind = error instanceof Error ? error.name : typeof error
+    const status = (error as { statusCode?: number; status?: number })?.statusCode ?? (error as { status?: number })?.status
+    console.error(`[nebius] ${modelId} falló tras ${Math.round(performance.now() - started)} ms · ${kind}${status ? ` · HTTP ${status}` : ''}`)
     throw new Error('No se pudo completar la respuesta estructurada de Nebius.')
   }
 }
