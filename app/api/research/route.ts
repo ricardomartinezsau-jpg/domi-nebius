@@ -1,8 +1,27 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { Render } from '@renderinc/sdk'
 import { advanceResearch, createResearchRun, readResearch } from '@/lib/research'
+import { query } from '@/lib/db'
+import '@/lib/workflows'
 
 export const runtime = 'nodejs'
+
+async function dispatchResearch(runId: string): Promise<void> {
+  const token = process.env.RENDER_API_KEY?.trim()
+  if (token) {
+    try {
+      const render = new Render({ token })
+      const slug = process.env.RENDER_WORKFLOW_SLUG || 'domi-research'
+      const workflowRun = await render.workflows.startTask(`${slug}/research`, [runId])
+      await query('UPDATE runs SET task_run_id = $2 WHERE id = $1', [runId, workflowRun.taskRunId])
+      return
+    } catch (error) {
+      console.error('Fallo al iniciar task en Render Workflows, usando ejecución directa:', error)
+    }
+  }
+  void advanceResearch(runId).catch(() => {})
+}
 
 /**
  * Iniciar una investigación y consultarla después son dos cosas separadas a
@@ -31,7 +50,7 @@ export async function POST(request: Request) {
   if (resume.success) {
     const existing = await readResearch(resume.data.runId)
     if (!existing) return NextResponse.json({ error: 'Esa investigación no existe.' }, { status: 404 })
-    void advanceResearch(resume.data.runId).catch(() => {})
+    void dispatchResearch(resume.data.runId)
     return NextResponse.json({ runId: resume.data.runId, resumed: true })
   }
 
@@ -47,8 +66,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No se pudo abrir la investigación en este momento.' }, { status: 503 })
   }
 
-  // Arranca sin bloquear la respuesta. El estado vive en la base, no aquí.
-  void advanceResearch(runId).catch(() => {})
+  // Dispara el workflow en Render sin bloquear la respuesta. El estado vive en la base.
+  void dispatchResearch(runId)
   return NextResponse.json({ runId }, { status: 202 })
 }
 

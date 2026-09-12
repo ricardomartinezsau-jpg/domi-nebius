@@ -170,85 +170,126 @@ const askSystem = (locale: 'es' | 'en') =>
     ? 'You turn a person\'s blocker into ONE searchable question about how something is done today. Never ask about the person; ask about the procedure, requirement or current step.'
     : 'Conviertes el bloqueo de una persona en UNA pregunta buscable sobre cómo se hace algo hoy. Nunca preguntes por la persona; pregunta por el procedimiento, el requisito o el paso actual.'
 
+export async function executeQuestionOne(runId: string) {
+  const input = await readInput(runId)
+  const isEn = input.locale === 'en'
+  return runStep(runId, 'question-1', async () => {
+    const { output } = await generateStructured({
+      system: askSystem(input.locale),
+      prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}`,
+      schema: questionSchema,
+    })
+    return output
+  })
+}
+
+export async function executeSearchOne(runId: string) {
+  const first = await queryOne<{ result: { question: string; askedBecause: string } }>(
+    `SELECT result FROM run_steps WHERE run_id = $1 AND step = 'question-1' AND status = 'done'`,
+    [runId],
+  )
+  if (!first?.result) throw new Error('No se encontró el resultado de question-1 para ejecutar search-1.')
+  return runStep(runId, 'search-1', async () => {
+    const answer = await research(first.result.question)
+    return saveFindings(runId, 1, first.result, answer)
+  })
+}
+
+export async function executeGap(runId: string) {
+  const input = await readInput(runId)
+  const isEn = input.locale === 'en'
+  const search1 = await queryOne<{ result: { sources: number } }>(
+    `SELECT result FROM run_steps WHERE run_id = $1 AND step = 'search-1' AND status = 'done'`,
+    [runId],
+  )
+  const sourcesCount = search1?.result?.sources ?? 0
+  return runStep(runId, 'gap', async () => {
+    const stored = await storedFindings(runId)
+    const { output } = await generateStructured({
+      system: isEn
+        ? 'You read research findings already saved and decide whether ONE more search is needed. Ask again only if a concrete requirement is still missing. The follow-up must be a short question someone could type into a search engine — never a sentence starting with "I need more information". Never introduce a product or service the person did not mention. If the findings already cover the task, answer needsMore=false with empty strings. Report any disagreement between sources.'
+        : 'Lees hallazgos de investigación ya guardados y decides si hace falta UNA búsqueda más. Pide otra solo si falta un requisito concreto. La pregunta de seguimiento debe ser una pregunta corta que alguien escribiría en un buscador; nunca una frase que empiece por "necesito más información". Nunca introduzcas un producto o servicio que la persona no mencionó. Si lo encontrado ya cubre la tarea, responde needsMore=false con cadenas vacías. Señala cualquier contradicción entre fuentes.',
+      prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'SAVED FINDINGS' : 'HALLAZGOS GUARDADOS'} (${sourcesCount} ${isEn ? 'sources' : 'fuentes'}):\n${asEvidence(stored)}`,
+      schema: gapSchema,
+    })
+    return output
+  })
+}
+
+export async function executeSearchTwo(runId: string) {
+  const gapRow = await queryOne<{ result: z.infer<typeof gapSchema> }>(
+    `SELECT result FROM run_steps WHERE run_id = $1 AND step = 'gap' AND status = 'done'`,
+    [runId],
+  )
+  if (!gapRow?.result) throw new Error('No se encontró el resultado de gap para ejecutar search-2.')
+  const gap = gapRow.result
+  if (gap.needsMore && gap.question.trim()) {
+    return runStep(runId, 'search-2', async () => {
+      const answer = await research(gap.question)
+      return saveFindings(runId, 2, { question: gap.question, askedBecause: gap.askedBecause }, answer)
+    })
+  } else {
+    await query(
+      `INSERT INTO run_steps (run_id, step, status, result, finished_at) VALUES ($1, 'search-2', 'done', $2::jsonb, now())
+       ON CONFLICT (run_id, step) DO NOTHING`,
+      [runId, JSON.stringify({ skipped: true, reason: gap.disagreement || 'Los hallazgos de la primera vuelta ya cubren la tarea.' })],
+    )
+    return { skipped: true }
+  }
+}
+
+export async function executeGuide(runId: string) {
+  const input = await readInput(runId)
+  const isEn = input.locale === 'en'
+  const gapRow = await queryOne<{ result: z.infer<typeof gapSchema> }>(
+    `SELECT result FROM run_steps WHERE run_id = $1 AND step = 'gap' AND status = 'done'`,
+    [runId],
+  )
+  const gap = gapRow?.result
+
+  const guide = await runStep(runId, 'guide', async () => {
+    const stored = await storedFindings(runId)
+    const allowed = new Set(stored.flatMap((finding) => finding.sources.map((source) => source.url)))
+    const evidence = asEvidence(stored)
+
+    const { output } = await generateStructured({
+      system: isEn
+        ? 'You write a short actionable guide grounded ONLY in the findings given. Every step cites the URLs it came from, copied literally. Anything you cannot support with those findings goes in "unconfirmed" instead of being stated as fact. Steps are 2-10 minutes each.'
+        : 'Escribes una guía breve y accionable basada SOLO en los hallazgos dados. Cada paso cita las URLs de donde salió, copiadas literalmente. Lo que no puedas respaldar con esos hallazgos va en "unconfirmed" en vez de afirmarse. Cada paso dura de 2 a 10 minutos.',
+      prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'FINDINGS' : 'HALLAZGOS'}:\n${evidence}`,
+      schema: guideSchema,
+    })
+
+    const steps = output.steps.map((step) => {
+      const cited = step.sourceUrls.filter((url) => allowed.has(url))
+      return { ...step, sourceUrls: cited }
+    })
+    const unsupported = steps.filter((step) => step.sourceUrls.length === 0).map((step) => step.title)
+
+    return {
+      steps: steps.filter((step) => step.sourceUrls.length > 0),
+      unconfirmed: [...output.unconfirmed, ...unsupported.map((title) => `Sin fuente recuperada: ${title}`)],
+      disagreement: gap?.disagreement || null,
+    } satisfies Guide & { disagreement: string | null }
+  })
+
+  // El error de un intento anterior se borra al terminar bien: una ejecución
+  // que se recuperó no puede seguir mostrando el fallo del que se recuperó.
+  await query(`UPDATE runs SET status = 'done', current_step = NULL, ok = true, error = NULL WHERE id = $1`, [runId])
+  return guide
+}
+
 /**
  * Avanza la ejecución hasta terminarla. Es reanudable: llamarla otra vez
  * después de un fallo retoma en el primer paso que no esté terminado.
  */
 export async function advanceResearch(runId: string): Promise<void> {
-  const input = await readInput(runId)
-  const isEn = input.locale === 'en'
-
   try {
-    const first = await runStep(runId, 'question-1', async () => {
-      const { output } = await generateStructured({
-        system: askSystem(input.locale),
-        prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}`,
-        schema: questionSchema,
-      })
-      return output
-    })
-
-    const firstFindings = await runStep(runId, 'search-1', async () => {
-      const answer = await research(first.question)
-      return saveFindings(runId, 1, first, answer)
-    })
-
-    const gap = await runStep(runId, 'gap', async () => {
-      const stored = await storedFindings(runId)
-      const { output } = await generateStructured({
-        system: isEn
-          ? 'You read research findings already saved and decide whether ONE more search is needed. Ask again only if a concrete requirement is still missing. The follow-up must be a short question someone could type into a search engine — never a sentence starting with "I need more information". Never introduce a product or service the person did not mention. If the findings already cover the task, answer needsMore=false with empty strings. Report any disagreement between sources.'
-          : 'Lees hallazgos de investigación ya guardados y decides si hace falta UNA búsqueda más. Pide otra solo si falta un requisito concreto. La pregunta de seguimiento debe ser una pregunta corta que alguien escribiría en un buscador; nunca una frase que empiece por "necesito más información". Nunca introduzcas un producto o servicio que la persona no mencionó. Si lo encontrado ya cubre la tarea, responde needsMore=false con cadenas vacías. Señala cualquier contradicción entre fuentes.',
-        prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'SAVED FINDINGS' : 'HALLAZGOS GUARDADOS'} (${firstFindings.sources} ${isEn ? 'sources' : 'fuentes'}):\n${asEvidence(stored)}`,
-        schema: gapSchema,
-      })
-      return output
-    })
-
-    if (gap.needsMore && gap.question.trim()) {
-      await runStep(runId, 'search-2', async () => {
-        const answer = await research(gap.question)
-        return saveFindings(runId, 2, { question: gap.question, askedBecause: gap.askedBecause }, answer)
-      })
-    } else {
-      await query(
-        `INSERT INTO run_steps (run_id, step, status, result, finished_at) VALUES ($1, 'search-2', 'done', $2::jsonb, now())
-         ON CONFLICT (run_id, step) DO NOTHING`,
-        [runId, JSON.stringify({ skipped: true, reason: gap.disagreement || 'Los hallazgos de la primera vuelta ya cubren la tarea.' })],
-      )
-    }
-
-    await runStep(runId, 'guide', async () => {
-      const stored = await storedFindings(runId)
-      const allowed = new Set(stored.flatMap((finding) => finding.sources.map((source) => source.url)))
-      const evidence = asEvidence(stored)
-
-      const { output } = await generateStructured({
-        system: isEn
-          ? 'You write a short actionable guide grounded ONLY in the findings given. Every step cites the URLs it came from, copied literally. Anything you cannot support with those findings goes in "unconfirmed" instead of being stated as fact. Steps are 2-10 minutes each.'
-          : 'Escribes una guía breve y accionable basada SOLO en los hallazgos dados. Cada paso cita las URLs de donde salió, copiadas literalmente. Lo que no puedas respaldar con esos hallazgos va en "unconfirmed" en vez de afirmarse. Cada paso dura de 2 a 10 minutos.',
-        prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'FINDINGS' : 'HALLAZGOS'}:\n${evidence}`,
-        schema: guideSchema,
-      })
-
-      // La cita la valida el código, no el modelo: una URL que no salió de la
-      // búsqueda no respalda nada, aunque el modelo la escriba con seguridad.
-      const steps = output.steps.map((step) => {
-        const cited = step.sourceUrls.filter((url) => allowed.has(url))
-        return { ...step, sourceUrls: cited }
-      })
-      const unsupported = steps.filter((step) => step.sourceUrls.length === 0).map((step) => step.title)
-
-      return {
-        steps: steps.filter((step) => step.sourceUrls.length > 0),
-        unconfirmed: [...output.unconfirmed, ...unsupported.map((title) => `Sin fuente recuperada: ${title}`)],
-        disagreement: gap.disagreement || null,
-      } satisfies Guide & { disagreement: string | null }
-    })
-
-    // El error de un intento anterior se borra al terminar bien: una ejecución
-    // que se recuperó no puede seguir mostrando el fallo del que se recuperó.
-    await query(`UPDATE runs SET status = 'done', current_step = NULL, ok = true, error = NULL WHERE id = $1`, [runId])
+    await executeQuestionOne(runId)
+    await executeSearchOne(runId)
+    await executeGap(runId)
+    await executeSearchTwo(runId)
+    await executeGuide(runId)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Fallo sin detalle.'
     await query(`UPDATE runs SET status = 'failed', ok = false, error = $2 WHERE id = $1`, [runId, message])
