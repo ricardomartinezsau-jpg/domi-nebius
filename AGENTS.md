@@ -76,6 +76,18 @@ formatear código, escribir documentación.
 - **Modelo elegido midiendo.** Cuatro modelos occidentales sobre los mismos cinco casos:
   Gemma 3 y gpt-oss-120b pasan; Nemotron 3.5 Lightning se trunca; Llama 3.3 70B no completa
   ni una vez en 60 s. La evidencia está en `evaluation-evidence/`.
+- **Dos modelos, dos trabajos, y también medido.** El triage sigue con Gemma 3 27B: prompt
+  corto, ~3 s, y es lo que la persona espera mirando la pantalla. La investigación usa
+  `openai/gpt-oss-120b` porque manda los hallazgos completos (~4.500 caracteres) y con ese
+  contexto Gemma se desborda de forma intermitente: sigue generando hasta el techo y
+  devuelve un JSON partido. Tres intentos por modelo sobre el paso de la guía —Ultra 550B
+  3/3 en 5,3 s; gpt-oss-120b 3/3 en 6,1 s; Gemma 3/3 en 15,8 s pero falla en corridas
+  largas; Hermes 4 405B 3/3 en 60,8 s; Nemotron Super 120B 0/3. Se eligió gpt-oss-120b
+  sobre el Ultra porque en segundo plano 800 ms no compran nada y el tamaño sí cuesta.
+- **El techo de salida se declara en `lib/nebius.ts` y lo usan producto y evaluador.** Sin
+  él el SDK no manda `max_tokens` y una respuesta desbocada agota el minuto entero. El
+  evaluador falla a propósito si los dos dejan de coincidir: si no, deja de medir lo que
+  se sirve.
 - **Rúbrica determinística, no un segundo modelo de juez.** Es gratis, reproducible y cada
   aprobación se puede señalar con el dedo en `lib/verify.ts`.
 

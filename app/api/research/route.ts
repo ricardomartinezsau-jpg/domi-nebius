@@ -7,20 +7,47 @@ import '@/lib/workflows'
 
 export const runtime = 'nodejs'
 
+/**
+ * Entrega la ejecución a Render Workflows, y solo si eso no se pudo, la corre
+ * aquí mismo.
+ *
+ * El orden importa más de lo que parece: guardar el identificador de Render y
+ * disparar la tarea tienen que ir en bloques separados. Estaban juntos, y
+ * bastaba con que la base tosiera un segundo DESPUÉS de un disparo correcto
+ * para que esto creyera que Render había fallado y arrancara una segunda
+ * ejecución en paralelo a la que ya estaba corriendo allá.
+ */
 async function dispatchResearch(runId: string): Promise<void> {
   const token = process.env.RENDER_API_KEY?.trim()
+
   if (token) {
+    let taskRunId: string | null = null
     try {
       const render = new Render({ token })
       const slug = process.env.RENDER_WORKFLOW_SLUG || 'domi-research'
-      const workflowRun = await render.workflows.startTask(`${slug}/research`, [runId])
-      await query('UPDATE runs SET task_run_id = $2 WHERE id = $1', [runId, workflowRun.taskRunId])
-      return
+      taskRunId = (await render.workflows.startTask(`${slug}/research`, [runId])).taskRunId
     } catch (error) {
-      console.error('Fallo al iniciar task en Render Workflows, usando ejecución directa:', error)
+      console.error(`[research] ${runId}: Render Workflows no aceptó la tarea, se ejecuta aquí ·`, error instanceof Error ? error.name : error)
+    }
+
+    if (taskRunId) {
+      // A partir de aquí la tarea YA está corriendo en Render. Si no se puede
+      // anotar su identificador, se pierde la traza, no la ejecución: volver
+      // atrás y correrla en local sería duplicarla.
+      try {
+        await query('UPDATE runs SET task_run_id = $2 WHERE id = $1', [runId, taskRunId])
+      } catch (error) {
+        console.error(`[research] ${runId}: corre en Render como ${taskRunId} pero no se pudo anotar ·`, error instanceof Error ? error.name : error)
+      }
+      return
     }
   }
-  void advanceResearch(runId).catch(() => {})
+
+  // El error ya queda escrito en runs.status y runs.error dentro de
+  // advanceResearch; esto solo evita tumbar el proceso y deja rastro.
+  void advanceResearch(runId).catch((error) => {
+    console.error(`[research] ${runId}: la ejecución local terminó en fallo ·`, error instanceof Error ? error.message : error)
+  })
 }
 
 /**

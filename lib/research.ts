@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { query, queryOne } from './db.ts'
 import { confidenceFrom, research, type Source } from './linkup.ts'
-import { DEFAULT_MODEL, generateStructured } from './nebius.ts'
+import { DEFAULT_MODEL, RESEARCH_MODEL, generateStructured } from './nebius.ts'
 
 /**
  * Investigación en varios pasos, con estado en la base y recuperación.
@@ -71,12 +71,35 @@ async function readInput(runId: string): Promise<ResearchInput> {
 }
 
 /**
+ * Cuánto vale el permiso para ejecutar un paso antes de que otro pueda
+ * quitárselo. Existe porque un proceso que muere de golpe deja su paso en
+ * 'running' para siempre, y sin caducidad nadie podría recuperarlo nunca.
+ *
+ * Más largo que el paso más lento (el de la guía, 180 s en Render) con margen:
+ * el precio de equivocarse por corto es que dos ejecutores se pisen y se pague
+ * dos veces la misma búsqueda.
+ */
+const STEP_LEASE_MS = 300_000
+
+/** Se lanza cuando otro ejecutor tiene el paso en marcha ahora mismo. */
+export class StepBusyError extends Error {
+  constructor(step: string) {
+    super(`El paso ${step} lo está ejecutando otro proceso.`)
+    this.name = 'StepBusyError'
+  }
+}
+
+/**
  * Ejecuta un paso una sola vez en la vida de la ejecución.
  *
- * La escritura `ON CONFLICT DO NOTHING` es la que decide quién corre: si dos
- * intentos llegan a la vez, solo uno inserta la fila y el otro espera al
- * resultado guardado. Un paso ya terminado devuelve su resultado sin volver a
- * llamar a nadie.
+ * Quién corre lo decide una sola escritura atómica: se reclama el paso si nadie
+ * lo tiene, si el intento anterior falló, o si quien lo tenía lleva más de
+ * STEP_LEASE_MS sin terminar (murió). Reclamar un paso que otro está
+ * ejecutando ahora mismo NO está permitido, y esa es la diferencia: antes dos
+ * ejecutores simultáneos —el de Render y el de reserva— podían pagar los dos
+ * la misma búsqueda y duplicar los hallazgos.
+ *
+ * Un paso ya terminado devuelve su resultado sin llamar a nadie.
  */
 async function runStep<T>(runId: string, step: ResearchStep, work: () => Promise<T>): Promise<T> {
   const existing = await queryOne<StepRow>('SELECT step, status, result, error, attempt FROM run_steps WHERE run_id = $1 AND step = $2', [runId, step])
@@ -85,13 +108,19 @@ async function runStep<T>(runId: string, step: ResearchStep, work: () => Promise
   const claimed = await queryOne<{ step: string }>(
     `INSERT INTO run_steps (run_id, step, status, attempt) VALUES ($1, $2, 'running', 1)
      ON CONFLICT (run_id, step) DO UPDATE SET status = 'running', attempt = run_steps.attempt + 1, error = NULL, started_at = now()
-     WHERE run_steps.status <> 'done'
+     WHERE run_steps.status = 'failed'
+        OR (run_steps.status = 'running' AND run_steps.started_at < now() - ($3::int * interval '1 millisecond'))
      RETURNING step`,
-    [runId, step],
+    [runId, step, STEP_LEASE_MS],
   )
   if (!claimed) {
-    const settled = await queryOne<StepRow>('SELECT result FROM run_steps WHERE run_id = $1 AND step = $2', [runId, step])
-    return settled?.result as T
+    const settled = await queryOne<StepRow>('SELECT status, result FROM run_steps WHERE run_id = $1 AND step = $2', [runId, step])
+    // Terminó entre las dos consultas: su resultado sirve igual.
+    if (settled?.status === 'done') return settled.result as T
+    // Lo tiene otro y sigue vivo. Rendirse aquí es correcto: el que lo tiene
+    // va a seguir la cadena. Fingir que salió bien devolvería undefined al
+    // paso siguiente y el fallo aparecería más adelante, disfrazado.
+    throw new StepBusyError(step)
   }
 
   await query('UPDATE runs SET status = $2, current_step = $3 WHERE id = $1', [runId, 'running', step])
@@ -109,14 +138,31 @@ async function runStep<T>(runId: string, step: ResearchStep, work: () => Promise
   }
 }
 
-/** Guarda pregunta y hallazgos en la misma transacción lógica del paso. */
+/**
+ * Guarda pregunta y hallazgos de una vuelta.
+ *
+ * El índice único (run_id, round) es el cerrojo de abajo: si otro ejecutor ya
+ * escribió esta vuelta, aquí no se inserta nada y se reusa lo suyo. Cuesta una
+ * búsqueda pagada de más en ese caso raro, pero nunca hallazgos duplicados, que
+ * es lo que la persona vería y lo que el premio prohíbe.
+ */
 async function saveFindings(runId: string, round: number, ask: { question: string; askedBecause: string }, answer: { answer: string; sources: Source[] }) {
   const question = await queryOne<{ id: string }>(
     `INSERT INTO research_questions (run_id, round, question, asked_because, status)
-     VALUES ($1, $2, $3, $4, 'answered') RETURNING id`,
+     VALUES ($1, $2, $3, $4, 'answered')
+     ON CONFLICT (run_id, round) DO NOTHING
+     RETURNING id`,
     [runId, round, ask.question, ask.askedBecause],
   )
-  if (!question) throw new Error('No se pudo guardar la pregunta de investigación.')
+  if (!question) {
+    const existing = await queryOne<{ id: string; question: string }>(
+      'SELECT id, question FROM research_questions WHERE run_id = $1 AND round = $2',
+      [runId, round],
+    )
+    if (!existing) throw new Error('No se pudo guardar la pregunta de investigación.')
+    const already = await queryOne<{ n: number }>('SELECT count(*)::int AS n FROM findings WHERE question_id = $1', [existing.id])
+    return { questionId: existing.id, sources: already?.n ?? 0, confidence: 'single' as const, reused: true }
+  }
 
   const confidence = confidenceFrom(answer.sources)
   for (const source of answer.sources.slice(0, 8)) {
@@ -178,6 +224,7 @@ export async function executeQuestionOne(runId: string) {
       system: askSystem(input.locale),
       prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}`,
       schema: questionSchema,
+      modelId: RESEARCH_MODEL,
     })
     return output
   })
@@ -211,6 +258,7 @@ export async function executeGap(runId: string) {
         : 'Lees hallazgos de investigación ya guardados y decides si hace falta UNA búsqueda más. Pide otra solo si falta un requisito concreto. La pregunta de seguimiento debe ser una pregunta corta que alguien escribiría en un buscador; nunca una frase que empiece por "necesito más información". Nunca introduzcas un producto o servicio que la persona no mencionó. Si lo encontrado ya cubre la tarea, responde needsMore=false con cadenas vacías. Señala cualquier contradicción entre fuentes.',
       prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'SAVED FINDINGS' : 'HALLAZGOS GUARDADOS'} (${sourcesCount} ${isEn ? 'sources' : 'fuentes'}):\n${asEvidence(stored)}`,
       schema: gapSchema,
+      modelId: RESEARCH_MODEL,
     })
     return output
   })
@@ -258,6 +306,7 @@ export async function executeGuide(runId: string) {
         : 'Escribes una guía breve y accionable basada SOLO en los hallazgos dados. Cada paso cita las URLs de donde salió, copiadas literalmente. Lo que no puedas respaldar con esos hallazgos va en "unconfirmed" en vez de afirmarse. Cada paso dura de 2 a 10 minutos.',
       prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'FINDINGS' : 'HALLAZGOS'}:\n${evidence}`,
       schema: guideSchema,
+      modelId: RESEARCH_MODEL,
     })
 
     const steps = output.steps.map((step) => {
@@ -291,6 +340,10 @@ export async function advanceResearch(runId: string): Promise<void> {
     await executeSearchTwo(runId)
     await executeGuide(runId)
   } catch (error) {
+    // Que otro ejecutor tenga un paso no es un fallo de la investigación: es
+    // la protección funcionando. Marcarla 'failed' aquí le mentiría a quien
+    // está esperando, porque el otro ejecutor va a seguir la cadena.
+    if (error instanceof StepBusyError) return
     const message = error instanceof Error ? error.message : 'Fallo sin detalle.'
     await query(`UPDATE runs SET status = 'failed', ok = false, error = $2 WHERE id = $1`, [runId, message])
     throw error

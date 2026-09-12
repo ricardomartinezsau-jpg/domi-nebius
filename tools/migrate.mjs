@@ -52,7 +52,12 @@ async function main() {
 
     for (const file of files) {
       const sql = fs.readFileSync(path.join(DIR, file), 'utf8')
-      const hash = sha256(sql)
+      // La huella se calcula con finales de línea normalizados. En Windows, Git
+      // entrega estos archivos con CRLF aunque en el repositorio estén con LF:
+      // sin normalizar, la misma migración cambia de huella al clonar y la
+      // herramienta se bloquea sola, impidiendo aplicar cualquier migración
+      // nueva. Pasó, y costó una columna que la aplicación creía tener.
+      const hash = sha256(sql.replace(/\r\n/g, '\n'))
       const previous = byName.get(file)
 
       if (previous === hash) {
