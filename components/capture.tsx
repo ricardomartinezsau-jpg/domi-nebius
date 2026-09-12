@@ -72,10 +72,34 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
     } catch { stop(); setError('No se pudo abrir el micrófono. Puedes escribir tu lista.') }
   }
 
+  const [pills, setPills] = useState<string[]>([])
+
+  const SUGGESTIONS = [
+    'Hay una conversación pendiente con…',
+    'Tengo que enviar…',
+    'Pagar el servicio de…',
+    'Pendiente de la casa: ',
+  ]
+
+  const removePill = (indexToRemove: number) => {
+    setPills(prev => prev.filter((_, i) => i !== indexToRemove))
+  }
+
+  const addPill = (suggestion: string) => {
+    if (!pills.includes(suggestion)) {
+      setPills(prev => [...prev, suggestion])
+    }
+  }
+
+  const getFullText = () => {
+    const parts = [...pills, textRef.current.trim()].filter(Boolean)
+    return parts.join('\n')
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     if (sending.current) return
-    const raw = textRef.current.trim()
+    const raw = getFullText().trim()
     if (!raw) { setError('Puedes empezar con un solo pendiente.'); field.current?.focus(); return }
     stop()
     sending.current = true
@@ -96,25 +120,102 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
   }
 
   return <div className="domi-shell capture-shell">
-    <header className="domi-header"><Brand />{hasTasks && <button className="quiet" onClick={onBack} disabled={busy}>Mis pendientes</button>}</header>
+    <header className="domi-header">
+      <Brand />
+      {hasTasks && <button className="quiet" onClick={onBack} disabled={busy}>Mis bandejas</button>}
+    </header>
     <main className="capture-main">
       <form onSubmit={submit} aria-labelledby="capture-title">
         <h1 id="capture-title">Dime tus pendientes.</h1>
         <p className="intro">Tal como los tienes, sin ordenar nada.<br />Puedes escribirlos o contármelos.</p>
+        
+        {/* Chips de sugerencia rápida para detonar ideas */}
+        <div className="domi-prompts-bar" aria-label="Sugerencias rápidas">
+          {SUGGESTIONS.map((sug, i) => (
+            <button
+              key={i}
+              type="button"
+              className="domi-chip"
+              disabled={busy}
+              onClick={() => addPill(sug)}
+            >
+              <span>+</span> {sug}
+            </button>
+          ))}
+        </div>
+
         <div className="capture-canvas">
-          <label className="field-label" htmlFor="capture-text">Tu lista, como salga</label>
-          <textarea id="capture-text" ref={field} value={text} rows={6} maxLength={4000} disabled={busy} readOnly={listening} placeholder="Tengo que responder a Ana, pagar la luz…" aria-describedby="capture-help"
+          <div className="field-label-group">
+            <label className="field-label" htmlFor="capture-text">Tu lista, como salga</label>
+          </div>
+
+          {/* Pastillas añadidas al lienzo con botón 'x' para eliminar en 1 clic */}
+          {pills.length > 0 && (
+            <div className="domi-input-pills-container" aria-label="Sugerencias activas">
+              {pills.map((pill, index) => (
+                <span key={index} className="domi-input-pill">
+                  <span className="domi-input-pill-text">{pill}</span>
+                  <button
+                    type="button"
+                    className="domi-pill-remove-btn"
+                    onClick={() => removePill(index)}
+                    aria-label={`Eliminar sugerencia ${pill}`}
+                    title="Eliminar sugerencia"
+                  >
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <textarea
+            id="capture-text"
+            ref={field}
+            value={text}
+            rows={5}
+            maxLength={4000}
+            disabled={busy}
+            readOnly={listening}
+            placeholder={pills.length > 0 ? "Escribe aquí los detalles del pendiente..." : "Tengo que responder a Ana, pagar la luz, comprar café…"}
+            aria-describedby="capture-help"
             onChange={event => { textRef.current = event.target.value; setText(event.target.value); setError('') }}
-            onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit() } }} />
-          {listening && <div className="voice-panel" role="status"><span className="voice-wave" aria-hidden="true">{[0, 1, 2, 3, 4].map(i => <i key={i} style={{ animationDelay: `${i * -0.2}s` }} />)}</span><span>Escuchando con calma…<small>Habla a tu ritmo.</small></span><button type="button" className="quiet" onClick={stop}>Listo</button></div>}
-          <div className="capture-footer"><span id="capture-help">{text.length >= 3800 ? `${4000 - text.length} caracteres disponibles` : 'No necesitas una lista perfecta.'}</span><span className="shortcut"><kbd>{modifier}</kbd> + <kbd>Enter</kbd></span></div>
+            onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit() } }}
+          />
+
+          {listening && (
+            <div className="voice-panel" role="status">
+              <span className="voice-wave" aria-hidden="true">
+                {[0, 1, 2, 3, 4, 5, 6].map(i => <i key={i} style={{ animationDelay: `${i * -0.15}s` }} />)}
+              </span>
+              <div className="voice-text">
+                <strong>Escuchando con calma…</strong>
+                <small>Habla a tu propio ritmo. Sin prisas.</small>
+              </div>
+              <button type="button" className="quiet" onClick={stop}>Listo</button>
+            </div>
+          )}
+
+          <div className="capture-footer">
+            <span id="capture-help">
+              {text.length >= 3800 ? `${4000 - text.length} caracteres disponibles` : 'No necesitas una lista perfecta.'}
+            </span>
+            <span className="shortcut"><kbd>{modifier}</kbd> + <kbd>Enter</kbd></span>
+          </div>
         </div>
+
         <div className="capture-actions">
-          <button className="secondary" type="button" disabled={busy || !supported} onClick={speak} aria-pressed={listening}>{listening ? <Square size={18} /> : <Mic size={20} />}{listening ? 'Terminar dictado' : 'Hablar'}</button>
-          <button className="primary" type="submit" disabled={busy}>{busy ? 'Aclarando la mesa…' : <>Encontrar una cosa <ArrowRight size={18} /></>}</button>
+          <button className="secondary" type="button" disabled={busy || !supported} onClick={speak} aria-pressed={listening}>
+            {listening ? <Square size={18} /> : <Mic size={20} />}
+            {listening ? 'Terminar dictado' : 'Hablar'}
+          </button>
+          <button className="primary" type="submit" disabled={busy}>
+            {busy ? 'Aclarando la mesa…' : <>Encontrar una cosa <ArrowRight size={18} /></>}
+          </button>
         </div>
+
         {!supported && <p className="meta">El dictado no está disponible en este navegador. Puedes escribir.</p>}
-        {busy && <p className="loading-line" role="status">Domi está repartiendo tus pendientes.</p>}
+        {busy && <p className="loading-line" role="status">Domi está repartiendo tus pendientes en las cuatro bandejas…</p>}
         {error && <p className="error" role="alert">{error}</p>}
       </form>
     </main>

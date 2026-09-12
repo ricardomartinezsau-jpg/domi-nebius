@@ -56,11 +56,31 @@ export function Dominio({ session, dispatch, retryDetail }: Props) {
           {pending && <div className="current-action"><span className="meta">Ahora · paso {doneSteps + 1} de {task.steps.length}</span><h2>{pending.title}</h2><p>{pending.hook}</p></div>}
           {!pending && task.steps.length > 0 && <p className="meta">Los pasos están marcados. Tú decides cuándo está terminada la tarea.</p>}
           {!task.steps.length && <p className="meta">{dump?.detailStatus === 'pending' ? 'Puedes empezar. Los pasos llegarán aquí sin interrumpir tu sesión.' : 'Trabaja en esta tarea a tu ritmo.'}</p>}
-          <div className="focus-clock">
-            <div className="clock-top"><span>{run.activeSince === null ? 'Sesión en pausa' : 'Tiempo en esta tarea'}</span><label className="clock-switch">Ver tiempo<input type="checkbox" role="switch" checked={session.clockVisible} onChange={() => dispatch({ type: 'clockVisible' })} /><span aria-hidden="true" /></label></div>
-            {session.clockVisible && <div className="clock-digits" aria-label={`${minutes} minutos y ${seconds % 60} segundos registrados`}>{clock}</div>}
-            <div className="clock-controls"><button className="quiet" onClick={() => act(run.activeSince === null ? 'resume' : 'pause')}>{run.activeSince === null ? <Play size={16} /> : <Pause size={16} />}{run.activeSince === null ? 'Reanudar' : 'Pausar'}</button><button className="quiet" onClick={() => { const time = Date.now(); setNow(time); dispatch({ type: 'resetClock', runId: crypto.randomUUID(), now: time }) }}><RotateCcw size={15} />Nuevo tramo</button></div>
-            <p className="clock-note">{session.clockVisible ? 'Tiempo registrado, sin cuenta regresiva.' : `Reloj oculto; ${run.activeSince === null ? 'la sesión está en pausa' : 'el tiempo sigue registrándose'}.`}</p>
+          <div className={`focus-clock${session.clockVisible ? '' : ' is-collapsed'}`}>
+            <div className="clock-top">
+              <div className="clock-label-group">
+                <span className={`clock-pulse-dot${run.activeSince !== null ? ' is-active' : ''}`} aria-hidden="true" />
+                <span>{run.activeSince === null ? 'Sesión en pausa' : 'Tiempo transcurrido'}</span>
+              </div>
+              <label className="clock-switch">
+                <span className="switch-text">{session.clockVisible ? 'Visible' : 'Oculto'}</span>
+                <input type="checkbox" role="switch" checked={session.clockVisible} onChange={() => dispatch({ type: 'clockVisible' })} />
+                <span className="switch-slider" aria-hidden="true" />
+              </label>
+            </div>
+            <div className="clock-collapsible">
+              <div className="clock-digits" aria-label={`${minutes} minutos y ${seconds % 60} segundos registrados`}>{clock}</div>
+              <div className="clock-controls">
+                <button className="quiet" onClick={() => act(run.activeSince === null ? 'resume' : 'pause')}>
+                  {run.activeSince === null ? <Play size={16} /> : <Pause size={16} />}
+                  {run.activeSince === null ? 'Reanudar' : 'Pausar'}
+                </button>
+                <button className="quiet" onClick={() => { const time = Date.now(); setNow(time); dispatch({ type: 'resetClock', runId: crypto.randomUUID(), now: time }) }}>
+                  <RotateCcw size={15} />Nuevo tramo
+                </button>
+              </div>
+              <p className="clock-note">Registrando tiempo con calma, sin cuenta regresiva.</p>
+            </div>
           </div>
           {task.steps.length > 0 && <fieldset className="focus-steps"><legend>Micro-pasos de apoyo</legend>{task.steps.map(step => <label key={step.id} className={step.done ? 'step is-done' : 'step'}><input type="checkbox" checked={step.done} onChange={() => dispatch({ type: 'step', taskId: task.id, stepId: step.id })} /><span>{step.title}</span></label>)}</fieldset>}
           {dump?.detailStatus === 'failed' && <p className="meta">Los pasos no llegaron. <button className="quiet" onClick={() => retryDetail(dump.id)}>Reintentar pasos</button></p>}
