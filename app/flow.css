@@ -18,8 +18,10 @@ h2 { font-size:24px; line-height:1.2; letter-spacing:-.5px; margin:0; }
 p { line-height:1.6; }
 .domi-shell { margin:0 auto; padding:32px 24px 36px; min-height:100svh; }
 .domi-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:40px; }
-.domi-brand { display:inline-flex; align-items:center; gap:10px; font-weight:700; font-size:21px; line-height:1; letter-spacing:-.5px; }
-.domi-brand svg { color:var(--domi-blue); }
+.domi-brand { display:inline-flex; align-items:center; gap:10px; line-height:1; }
+.domi-symbol-svg { width:32px; height:20px; flex-shrink:0; color:var(--domi-blue); }
+.domi-wordmark { height:20px; width:auto; flex-shrink:0; color:var(--ink); }
+.dominio-page .domi-wordmark { color:#f5f5ef; }
 .badge { background:#dfe7f4; color:#344365; border-radius:20px; padding:5px 12px; font-size:13px; }
 .intro { color:var(--domi-muted); font-size:18px; margin:14px 0 28px; }
 .primary,.secondary,.hero-start { min-height:54px; display:inline-flex; align-items:center; justify-content:center; gap:10px; padding:0 22px; border-radius:12px; font-size:16px; font-weight:600; border:1px solid transparent; }
