@@ -6,6 +6,8 @@ export function observeResearch(runId: string, onView: (view: ResearchView) => v
   let timer: ReturnType<typeof setTimeout> | undefined
   let request: AbortController | undefined
   let requestTimeout: ReturnType<typeof setTimeout> | undefined
+  let inaccessible = false
+  let retryAt = 0
 
   const cancel = () => {
     clearTimeout(timer)
@@ -14,7 +16,8 @@ export function observeResearch(runId: string, onView: (view: ResearchView) => v
     request = undefined
   }
   const poll = async () => {
-    if (disposed || document.visibilityState === 'hidden' || request) return
+    if (disposed || inaccessible || document.visibilityState === 'hidden' || request) return
+    if (Date.now() < retryAt) { clearTimeout(timer); timer = setTimeout(poll, retryAt - Date.now()); return }
     clearTimeout(timer)
     const controller = new AbortController()
     request = controller
@@ -23,7 +26,9 @@ export function observeResearch(runId: string, onView: (view: ResearchView) => v
     let terminal = false
     try {
       const response = await fetch(`/api/research?runId=${encodeURIComponent(runId)}`, { signal: controller.signal, cache: 'no-store' })
-      if (!response.ok) throw new Error(response.status === 404 ? 'No se encontró esta investigación.' : 'No pudimos actualizar la investigación. Volveremos a consultar.')
+      if (response.status === 404) inaccessible = true
+      if (response.status === 429) retryAt = Date.now() + Math.max(1, Number(response.headers?.get('retry-after')) || 60) * 1000
+      if (!response.ok) throw new Error(response.status === 404 ? 'Esta investigación no está disponible con la sesión de este navegador.' : response.status === 429 ? 'Se alcanzó el límite de consultas. Esperaremos antes de volver a leer.' : 'No pudimos actualizar la investigación. Volveremos a consultar.')
       const view: ResearchView = await response.json()
       if (view.runId !== runId || !['queued', 'running', 'done', 'failed'].includes(view.status)) throw new Error('La respuesta no corresponde a esta investigación.')
       if (disposed || controller.signal.aborted || request !== controller) return
@@ -37,7 +42,7 @@ export function observeResearch(runId: string, onView: (view: ResearchView) => v
       // A late response cannot resurrect an observer or overwrite a newer request.
       if (!disposed && request === controller) {
         request = undefined
-        if (!terminal && document.visibilityState === 'visible') timer = setTimeout(poll, 2500)
+        if (!terminal && !inaccessible && document.visibilityState === 'visible') timer = setTimeout(poll, Math.max(2500, retryAt - Date.now()))
       }
     }
   }

@@ -12,10 +12,11 @@ export function assertAdmission() {
 export type Reservation = { key: string; seconds: number; limit: number; units?: number }
 
 /** Caller owns the transaction: refusal rolls back ALL counters and associated writes. */
-export async function reserveLimits(client: SqlClient, limits: Reservation[]) {
-  assertAdmission()
+export async function reserveLimits(client: SqlClient, limits: Reservation[], admissionRequired = true) {
+  if (admissionRequired) assertAdmission()
   // Deterministic lock order prevents opposite-order quota deadlocks.
   for (const item of [...limits].sort((a, b) => a.key.localeCompare(b.key))) {
+    if (!Number.isSafeInteger(item.units ?? 1) || (item.units ?? 1) < 1 || (item.units ?? 1) > item.limit || item.seconds < 1) throw new PolicyError(503, 'INVALID_QUOTA_CONFIGURATION')
     const result = await client.query(
       `INSERT INTO admission_counters (bucket_key, window_start, used)
        VALUES ($1, to_timestamp(floor(extract(epoch FROM now()) / $2::int) * $2::int), $3)
@@ -27,9 +28,9 @@ export async function reserveLimits(client: SqlClient, limits: Reservation[]) {
   }
 }
 
-export async function reserve(limits: Reservation[]) {
-  assertAdmission()
-  try { await transaction(client => reserveLimits(client, limits)) }
+export async function reserve(limits: Reservation[], admissionRequired = true) {
+  if (admissionRequired) assertAdmission()
+  try { await transaction(client => reserveLimits(client, limits, admissionRequired)) }
   catch (error) {
     if (error instanceof PolicyError) throw error
     logFailure('admission.db', error)

@@ -4,6 +4,7 @@
  */
 
 'use client'
+import { guestFetch } from '@/lib/guest-client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { QuickOutput } from '@/lib/triage'
@@ -112,7 +113,7 @@ export function BrainDump({ open, onClose, onQuickResult }: Props) {
     setError(null)
     setReading(true)
     try {
-      const response = await fetch('/api/triage', {
+      const response = await guestFetch('/api/triage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phase: 'quick', rawDump, locale: 'es' }),

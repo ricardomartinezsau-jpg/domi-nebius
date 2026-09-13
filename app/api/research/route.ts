@@ -3,7 +3,7 @@ import { readResearch } from '@/lib/research'
 import { createResearchRun } from '@/lib/research-lifecycle'
 import { dispatchResearch } from '@/lib/research-dispatch'
 import { requireGuest, mutationBody, ipBucket } from '@/lib/guest'
-import { LIMITS, reserve } from '@/lib/admission'
+import { LIMITS } from '@/lib/admission'
 import { PolicyError, failureResponse, logFailure, requestId, withContext } from '@/lib/operations'
 
 export const runtime = 'nodejs'
@@ -46,7 +46,6 @@ export async function GET(request: Request) {
       const owner = requireGuest(request, true)
       const runId = new URL(request.url).searchParams.get('runId')
       if (!z.string().uuid().safeParse(runId).success) throw new PolicyError(400, 'INVALID_RUN_ID')
-      await reserve([{ key: `research:read:${owner}`, limit: LIMITS.readsMinute, seconds: 60 }])
       const view = await readResearch(runId!, owner)
       if (!view) throw new PolicyError(404, 'NOT_FOUND')
       return Response.json(view, { headers: { 'Cache-Control': 'no-store', 'X-Request-Id': requestId() } })

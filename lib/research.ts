@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { query, queryOne, transaction, type SqlClient } from './db.ts'
 import { runStep, StepBusyError, StaleExecutionError, withExecution, lockCurrentRun, currentGeneration, safeRunError } from './research-execution.ts'
 import { PolicyError, logFailure } from './operations.ts'
+import { LIMITS, reserve } from './admission.ts'
 export { StepBusyError } from './research-execution.ts'
 import { confidenceFrom, research, type Source } from './linkup.ts'
 import { RESEARCH_MODEL, generateStructured } from './nebius.ts'
@@ -313,6 +314,8 @@ export type ResearchView = {
   status: 'queued' | 'running' | 'done' | 'failed'
   currentStep: string | null
   error: string | null
+  dispatchState?: string
+  canResume?: boolean
   steps: { step: string; status: string; attempt: number; error: string | null }[]
   questions: { round: number; question: string; askedBecause: string }[]
   sources: { url: string; name: string | null; confidence: string; round: number }[]
@@ -322,11 +325,17 @@ export type ResearchView = {
 /** Todo lo que se puede recuperar de una ejecución, con o sin la pestaña abierta. */
 export async function readResearch(runId: string, owner: string): Promise<ResearchView | null> {
   if (!owner) return null
-  const run = await queryOne<{ id: string; status: ResearchView['status']; current_step: string | null; error: string | null }>(
-    'SELECT id, status, current_step, error FROM runs WHERE id = $1 AND guest_owner = $2',
+  const run = await queryOne<{ id: string; status: ResearchView['status']; current_step: string | null; error: string | null; dispatch_state: string; can_resume: boolean }>(
+    `SELECT id, status, current_step, error, dispatch_state,
+      (dispatch_state NOT IN ('sending', 'unknown') AND (status = 'failed' OR
+       (status <> 'done' AND dispatch_started_at < now() - interval '25 minutes'))) AS can_resume
+     FROM runs WHERE id = $1 AND guest_owner = $2`,
     [runId, owner],
   )
   if (!run) return null
+  // Unowned UUID probes cannot allocate quota rows. Authorized reads remain
+  // available when paid admission is closed, but still require a healthy limiter.
+  await reserve([{ key: `research:read:${owner}`, limit: LIMITS.readsMinute, seconds: 60 }], false)
 
   const steps = await query<{ step: string; status: string; attempt: number; error: string | null }>(
     'SELECT step, status, attempt, error FROM run_steps WHERE run_id = $1 ORDER BY started_at',
@@ -352,6 +361,8 @@ export async function readResearch(runId: string, owner: string): Promise<Resear
     status: run.status,
     currentStep: run.current_step,
     error: run.error,
+    dispatchState: run.dispatch_state,
+    canResume: run.can_resume,
     steps,
     questions: questions.map((row) => ({ round: row.round, question: row.question, askedBecause: row.asked_because })),
     sources: sources.map((row) => ({ url: row.source_url, name: row.source_name, confidence: row.confidence, round: row.round })),

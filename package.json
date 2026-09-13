@@ -11,7 +11,9 @@
     "migrate": "node tools/migrate.mjs",
     "models": "node tools/models.mjs",
     "eval": "node tests/eval.mjs",
-    "test": "node --test tests/session.test.mjs tests/guardrails.test.mjs tests/research.test.mjs tests/research-observer.test.mjs tests/research-evidence.test.mjs tests/criterio.test.mjs",
+    "test": "node --test tests/session.test.mjs tests/guardrails.test.mjs tests/research.test.mjs tests/research-observer.test.mjs tests/research-evidence.test.mjs tests/criterio.test.mjs tests/admission.test.mjs tests/research-access.test.mjs tests/research-execution.test.mjs tests/workflows.test.mjs tests/operations.test.mjs tests/guest-client.test.mjs tests/backend-routes.test.mjs",
+    "test:backend-sql": "node --test tests/backend-sql.test.mjs",
+    "verify:build": "node tools/verify-local.mjs build",
     "start:workflows": "node tools/workflows-server.mjs"
   },
   "dependencies": {

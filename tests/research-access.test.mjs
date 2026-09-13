@@ -50,3 +50,18 @@ test('confirmed Render acceptance followed by a DB failure never runs local', as
   assert.equal((await load('lib/research-dispatch.ts').dispatchResearch('run', 'owner')).accepted, true)
   assert.equal(local, 0)
 })
+
+for (const mode of ['timeout', 'missing-id']) test(`ambiguous Render acceptance (${mode}) blocks redispatch and never runs local`, async () => {
+  let local = 0; let state
+  const load = loader({
+    'lib/research-lifecycle.ts': { claimDispatch: async () => ({ claimed: true, generation: 1 }) },
+    'lib/db.ts': { query: async (_sql, params) => { state = params[2] } },
+    'lib/research.ts': { advanceResearch: async () => { local++ } },
+    '@renderinc/sdk': { Render: class { workflows = { startTask: async () => { if (mode === 'timeout') throw new Error('timeout'); return {} } } } },
+  }, { process: { env: { RENDER_API_KEY: 'synthetic', NODE_ENV: 'production' } } })
+  const result = await load('lib/research-dispatch.ts').dispatchResearch('run', 'owner')
+  assert.equal(result.accepted, false)
+  assert.equal(result.dispatchState, 'unknown')
+  assert.equal(state, 'unknown')
+  assert.equal(local, 0)
+})

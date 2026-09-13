@@ -1,4 +1,5 @@
 'use client'
+import { guestFetch } from '@/lib/guest-client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowRight, Check, Clock, List, MessageSquare, Mic, Square, X } from 'lucide-react'
@@ -138,7 +139,7 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
     request.current = controller
     const timeout = setTimeout(() => controller.abort(), 135_000)
     try {
-      const response = await fetch('/api/triage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: 'quick', rawDump: raw, locale: 'es' }), signal: controller.signal })
+      const response = await guestFetch('/api/triage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: 'quick', rawDump: raw, locale: 'es' }), signal: controller.signal })
       const data = await response.json()
       if (!response.ok) throw new Error('triage failed')
       const parsed = quickResultSchema.safeParse(data.output)

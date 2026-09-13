@@ -57,3 +57,14 @@ test('finishRun requires all five persisted steps before declaring success', asy
   await assert.rejects(load('lib/research-execution.ts').withExecution('run', 1, () => load('lib/research.ts').finishRun('run')), { code: 'INCOMPLETE_STEPS' })
   assert.equal(writes, 0)
 })
+
+test('a guide emptied by grounding never reaches the done persistence point', async () => {
+  let saved = false
+  const load = loader({
+    'lib/db.ts': { queryOne: async sql => sql.includes('SELECT steps') ? { steps: [{ input: { taskTitle: 'synthetic', blocker: 'synthetic', locale: 'es' } }] } : { result: {} }, query: async () => [] },
+    'lib/nebius.ts': { RESEARCH_MODEL: 'synthetic', generateStructured: async () => ({ output: { steps: [{ title: 'step', detail: 'detail', sourceUrls: ['https://invented.example'] }], unconfirmed: [] } }) },
+    'lib/research-execution.ts': { runStep: async (_run, _step, work) => { const result = await work(); saved = true; return result } },
+  })
+  await assert.rejects(load('lib/research.ts').executeGuide('run'), { code: 'UNGROUNDED_GUIDE' })
+  assert.equal(saved, false)
+})

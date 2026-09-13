@@ -6,6 +6,7 @@ import { TRAYS, type DomiSession, type DomiTask, type SessionAction, type Tray }
 import { Brand } from './brand'
 import { ResearchBadge } from './research-badge'
 import { useState } from 'react'
+import { createResearch } from '@/lib/guest-client'
 
 function TrayResearchInput({ tray, session, dispatch }: { tray: (typeof TRAYS)[number], session: DomiSession, dispatch: (action: SessionAction) => void }) {
   const [blocker, setBlocker] = useState('')
@@ -20,13 +21,9 @@ function TrayResearchInput({ tray, session, dispatch }: { tray: (typeof TRAYS)[n
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch('/api/research', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contextArea: tray.id, blocker })
-      })
+      const res = await createResearch({ contextArea: tray.color, blocker })
       const data = await res.json()
-      if (res.status === 202 && typeof data.runId === 'string') {
+      if (typeof data.runId === 'string' && (res.ok || data.dispatchState === 'unknown' || data.dispatchState === 'rejected')) {
         dispatch({ type: 'trayResearch', tray: tray.id, runId: data.runId, title: blocker.trim() })
         setBlocker('')
       } else {

@@ -27,7 +27,7 @@ export function loader(mocks = {}, globals = {}) {
       return load(target)
     }
     vm.runInNewContext(code, { module, exports: module.exports, require: resolve, console,
-      Error, TypeError, SyntaxError, Date, Buffer, Request, Response, Headers, AbortSignal, performance, setTimeout, clearTimeout,
+      Error, TypeError, SyntaxError, Date, Buffer, Request, Response, Headers, URL, URLSearchParams, TextEncoder, TextDecoder, Uint8Array, AbortSignal, performance, setTimeout, clearTimeout,
       process: { env: { NODE_ENV: 'test', DOMI_ADMISSION_ENABLED: 'true', BETTER_AUTH_SECRET: 'synthetic-secret-with-more-than-thirty-two-characters', BETTER_AUTH_URL: 'https://domi.test' } },
       fetch: () => { throw new Error('Unmocked network prohibited') }, ...globals }, { filename: file })
     return module.exports

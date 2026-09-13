@@ -77,3 +77,15 @@ test('transient read failure recovers, and failed research stops periodic reads'
   t.mock.timers.tick(60000)
   assert.equal(s.requests.length,2)
 })
+
+test('lost ownership stops polling, including wake events', async t => {
+  const s = setup(t)
+  s.requests[0].resolve({ ok: false, status: 404 })
+  await flush()
+  t.mock.timers.tick(120000)
+  window.dispatchEvent(new Event('pageshow'))
+  document.dispatchEvent(new Event('visibilitychange'))
+  await flush()
+  assert.equal(s.requests.length, 1)
+  assert.match(s.errors[0], /sesión/)
+})

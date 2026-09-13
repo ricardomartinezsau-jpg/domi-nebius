@@ -28,14 +28,15 @@ segundos en despertar.
 
 ```bash
 npm install
-cp .env.example .env.local   # y pega tu NEBIUS_API_KEY ahí
+cp .env.example .env.local   # configurar una base local y las claves solo al autorizar consumo
 npm run dev
 # abrir http://localhost:3000
 ```
 
-El flujo del vaciado necesita **solo** `NEBIUS_API_KEY`. Las demás variables de
-`.env.example` pertenecen a capas que todavía no están conectadas a esta pantalla; puedes
-dejarlas vacías.
+El vaciado requiere ahora PostgreSQL para cuotas, `BETTER_AUTH_SECRET` (32+ caracteres),
+el origen exacto en `BETTER_AUTH_URL` y Nebius. Research usa además Linkup y, en producción,
+Render Workflows. `DOMI_ADMISSION_ENABLED` está cerrado por defecto: no habilitarlo ni
+migrar una base remota sin completar las puertas de [remediación](BACKEND_REMEDIATION.md).
 
 ## Cómo está armado
 
@@ -45,10 +46,16 @@ dejarlas vacías.
 - `lib/triage.ts` — el contrato del producto: el esquema Zod de las 4 bandejas, el orden
   de dependencias, las micro-tareas y el modo momentum, más el prompt que se lo pide al
   modelo.
-- `app/api/triage/route.ts` — la única ruta de producto. Valida la entrada (1 a 4000
-  caracteres) antes de gastar un solo token, y resuelve las dos fases.
+- `app/api/triage/route.ts` — valida entrada, invitado, origen y cuotas antes de generar
+  las dos fases. `app/api/research/route.ts` coordina investigación con propiedad,
+  claves de idempotencia y presupuesto compartido.
 - `components/` — la UI: el vaciado (texto y voz) y la vista de resultado. El flujo
-  público no guarda nada en el servidor: cada envío es independiente.
+  de triage no guarda el contenido del vaciado en DB; sí registra contadores de uso.
+  Research **sí persiste** tarea/bloqueo, preguntas, fuentes, guía y estados. La cookie
+  del navegador acredita acceso a esos runs; perderla no permite reclamar el historial.
+
+Pruebas locales sin proveedores: `npm test`. Contratos, límites, SQL aislado, recuperación,
+observabilidad y rollback: [BACKEND_REMEDIATION.md](BACKEND_REMEDIATION.md).
 
 ## Evaluación
 

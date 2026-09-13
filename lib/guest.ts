@@ -36,6 +36,7 @@ export function ipBucket(_request: Request) { return 'unverified-proxy-shared' }
 export async function mutationBody(request: Request, maxBytes: number): Promise<unknown> {
   let origin: string
   try { origin = new URL(process.env.BETTER_AUTH_URL ?? '').origin } catch { throw new PolicyError(503, 'ORIGIN_CONFIGURATION') }
+  if (process.env.NODE_ENV === 'production' && !origin.startsWith('https://')) throw new PolicyError(503, 'ORIGIN_CONFIGURATION')
   if (request.headers.get('origin') !== origin) throw new PolicyError(403, 'ORIGIN_REJECTED')
   if (request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') throw new PolicyError(415, 'JSON_REQUIRED')
   if (Number(request.headers.get('content-length')) > maxBytes) throw new PolicyError(413, 'BODY_TOO_LARGE')

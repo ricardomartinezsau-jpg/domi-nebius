@@ -3,6 +3,7 @@
 import { AlertCircle, ExternalLink, Plus, Check, RotateCw, Search, ShieldCheck } from 'lucide-react'
 import { useResearch } from './use-research'
 import { useState } from 'react'
+import { resumeResearch } from '@/lib/guest-client'
 
 const STEP_LABELS: Record<string, string> = {
   'question-1': '1. Formular pregunta',
@@ -24,8 +25,22 @@ function getDomain(urlStr: string): string {
 }
 
 export function ResearchBlock({ runId, onConvertToTask }: { runId: string, onConvertToTask?: (title: string) => void }) {
-  const { view, error } = useResearch(runId)
+  const [refresh, setRefresh] = useState(0)
+  const [resuming, setResuming] = useState(false)
+  const [resumeError, setResumeError] = useState<string | null>(null)
+  const { view, error } = useResearch(runId, refresh)
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set())
+  const resume = async () => {
+    if (resuming) return
+    setResuming(true); setResumeError(null)
+    try {
+      const response = await resumeResearch(runId)
+      const data = await response.json()
+      if (!response.ok) setResumeError(data.error ?? 'No se confirmó la aceptación. No se enviará otra ejecución automáticamente.')
+      setRefresh(value => value + 1)
+    } catch { setResumeError('No se confirmó el envío. Tu investigación se conserva; no hemos creado otra.') }
+    finally { setResuming(false) }
+  }
 
   const handleAdd = (title: string) => {
     if (onConvertToTask) {
@@ -37,23 +52,27 @@ export function ResearchBlock({ runId, onConvertToTask }: { runId: string, onCon
   if (!view) {
     return (
       <div className="research-block is-loading-init" role="status">
-        <div className="research-init-spinner" aria-hidden="true" />
+        {!error && <div className="research-init-spinner" aria-hidden="true" />}
         <span>{error || 'Consultando tu investigación…'}</span>
       </div>
     )
   }
 
-  const isWorking = view.status === 'queued' || view.status === 'running'
+  const isUncertain = ['unknown', 'sending'].includes(view.dispatchState ?? '')
+  const isWorking = !isUncertain && (view.status === 'queued' || view.status === 'running')
   const isDone = view.status === 'done'
   const isFailed = view.status === 'failed'
 
   // Detectar si algún paso está en reintento o recuperándose (Render Workflows)
-  const recoveringStep = view.steps.find(s => s.attempt > 1 || (s.status === 'failed' && isWorking))
+  const recoveringStep = isWorking && view.steps.find(s => s.status === 'running' && s.attempt > 1)
   const currentStepIndex = view.currentStep ? STEP_ORDER.indexOf(view.currentStep) : -1
 
   return (
     <section className="research-block" aria-label="Investigación de apoyo">
       {error && <p role="status">{error} El resultado anterior se conserva.</p>}
+      {resumeError && <p role="alert">{resumeError}</p>}
+      {isUncertain && <p role="status">La entrega al ejecutor no está confirmada. Conservamos esta investigación; requiere revisión operativa antes de reenviarla.</p>}
+      {view.canResume && <button className="quiet" disabled={resuming} onClick={resume}>{resuming ? 'Comprobando…' : 'Reanudar investigación'}</button>}
       {/* Cabecera del bloque */}
       <header className="research-header">
         <div className="research-title-group">
@@ -61,6 +80,7 @@ export function ResearchBlock({ runId, onConvertToTask }: { runId: string, onCon
           <h2 className="research-title">Fuentes y guía</h2>
         </div>
         <span className={`research-status-badge status-${view.status}`}>
+          {isUncertain && 'Entrega por confirmar'}
           {isWorking && 'Investigando fuentes…'}
           {isDone && 'Listo para revisión'}
           {isFailed && 'Pausada por error'}
@@ -257,7 +277,7 @@ export function ResearchBlock({ runId, onConvertToTask }: { runId: string, onCon
       {isFailed && (
         <div className="research-failed-box">
           <p>
-            {view.error || 'La investigación no pudo completarse. Tu tarea y notas siguen intactas.'}
+            La investigación no pudo completarse. Tu tarea, notas y resultados guardados se conservan. {view.error && <small>Referencia: {view.error}</small>}
           </p>
         </div>
       )}

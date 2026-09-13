@@ -1,4 +1,5 @@
 'use client'
+import { guestFetch } from '@/lib/guest-client'
 
 import { useCallback, useEffect, useRef } from 'react'
 import type { DetailOutput, QuickOutput } from '@/lib/triage'
@@ -22,7 +23,7 @@ export function DomiApp() {
     dispatch({ type: 'detailStatus', dumpId: id, status: 'pending' })
     const timeout = setTimeout(() => controller.abort(), 135_000)
     try {
-      const response = await fetch('/api/triage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: 'detail', rawDump: rawText, locale: 'es', quick }), signal: controller.signal })
+      const response = await guestFetch('/api/triage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: 'detail', rawDump: rawText, locale: 'es', quick }), signal: controller.signal })
       const data = await response.json()
       if (!response.ok || !data.output || !Array.isArray(data.output.dependencyOrder) || !Array.isArray(data.output.microTasks)) throw new Error('detail failed')
       dispatch({ type: 'detail', dumpId: id, detail: data.output as DetailOutput })

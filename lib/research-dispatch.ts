@@ -2,7 +2,7 @@ import { Render } from '@renderinc/sdk'
 import { claimDispatch } from './research-lifecycle.ts'
 import { query } from './db.ts'
 import { advanceResearch } from './research.ts'
-import { PolicyError, logFailure, requestId, withContext } from './operations.ts'
+import { logFailure, requestId, withContext } from './operations.ts'
 
 export async function dispatchResearch(runId: string, owner: string) {
   const token = process.env.RENDER_API_KEY?.trim()
@@ -21,6 +21,7 @@ export async function dispatchResearch(runId: string, owner: string) {
       const render = new Render({ token })
       taskRunId = (await render.workflows.startTask(`${process.env.RENDER_WORKFLOW_SLUG || 'domi-research'}/research`,
         [runId, generation, requestId()], AbortSignal.timeout(15_000))).taskRunId
+      if (typeof taskRunId !== 'string' || !taskRunId.trim()) throw new Error('WORKFLOW_ACCEPTANCE_UNCONFIRMED')
     } catch (error) {
       logFailure('research.dispatch', error)
       const status = (error as { status?: number; statusCode?: number })?.status ?? (error as { statusCode?: number })?.statusCode

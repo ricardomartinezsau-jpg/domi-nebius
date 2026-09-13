@@ -14,6 +14,7 @@
  * Comando de arranque del servicio en Render:  npm run start:workflows
  */
 import './../lib/workflows.ts'
+import { logFailure } from '../lib/operations.ts'
 
 /**
  * Render arranca este proceso dos veces con propósitos distintos: primero para
@@ -34,7 +35,7 @@ console.log(
 
 // Una promesa suelta no puede tumbar el servicio entero.
 process.on('unhandledRejection', (reason) => {
-  console.error('[workflows] promesa sin capturar:', reason instanceof Error ? reason.message : reason)
+  logFailure('workflow.unhandled_rejection', reason)
 })
 
 /**
@@ -68,7 +69,7 @@ function probeDatabase() {
     new Promise((_, reject) => setTimeout(() => reject(new Error('no respondió en 15 s')), 15_000)),
   ]).then(
     () => console.log(`[workflows] base de datos: alcanzable en ${Date.now() - started} ms · ${where} · ${ssl}`),
-    (error) => console.error(`[workflows] base de datos: INALCANZABLE · ${where} · ${ssl} · ${error instanceof Error ? error.message : error}`),
+    (error) => logFailure('workflow.db_probe', error, Date.now() - started),
   )
 }
 

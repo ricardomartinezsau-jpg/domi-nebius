@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Check, Pause, Play, RotateCcw } from 'lucide-react'
 import { activeRun, elapsedMs, type DomiSession, type SessionAction } from '@/lib/session'
 import { Brand } from './brand'
+import { createResearch, beginFreshResearch } from '@/lib/guest-client'
 
 type Props = { session: DomiSession; dispatch: (action: SessionAction) => void; retryDetail: (dumpId: string) => void }
 export function Dominio({ session, dispatch, retryDetail }: Props) {
@@ -24,13 +25,9 @@ export function Dominio({ session, dispatch, retryDetail }: Props) {
     setSubmittingBlocker(true)
     setResearchError(null)
     try {
-      const res = await fetch('/api/research', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskTitle: task.title, blocker })
-      })
+      const res = await createResearch({ taskTitle: task.title, blocker })
       const data = await res.json()
-      if (res.status === 202 && typeof data.runId === 'string') {
+      if (typeof data.runId === 'string' && (res.ok || data.dispatchState === 'unknown' || data.dispatchState === 'rejected')) {
         const { runId } = data
         dispatch({ type: 'research', taskId: task.id, runId })
         setResearching(false)
@@ -95,7 +92,7 @@ export function Dominio({ session, dispatch, retryDetail }: Props) {
           {pending && <button className="quiet finish-whole" onClick={() => act('finish')}>Ya terminé la tarea completa</button>}
 
           {session.research && !researching ? (
-            <div className="research-request-link"><button className="quiet" onClick={() => dispatch({ type: 'screen', screen: 'research', now: Date.now() })}>Abrir investigación guardada</button><button className="quiet" onClick={() => setResearching(true)}>Pedir otra investigación</button></div>
+            <div className="research-request-link"><button className="quiet" onClick={() => dispatch({ type: 'screen', screen: 'research', now: Date.now() })}>Abrir investigación guardada</button><button className="quiet" onClick={() => { beginFreshResearch(); setResearching(true) }}>Pedir otra investigación</button></div>
           ) : researching ? (
             <div style={{ marginTop: 24, padding: '20px 24px', background: '#090e1a', borderRadius: 16, border: '1px solid #335cff4d' }}>
               <label htmlFor="research-blocker" style={{ display: 'block', color: '#a6bce9', marginBottom: 12, fontWeight: 500 }}>¿Qué te frena?</label>

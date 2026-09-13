@@ -51,7 +51,8 @@ export async function runStep<W, R = W>(runId: string, step: string, work: () =>
       if (existing?.attempt >= LIMITS.stepAttempts && (existing.status === 'failed' || existing.expired)) throw new PolicyError(409, 'ATTEMPTS_EXHAUSTED')
       throw new StepBusyError(step)
     }
-    await client.query(`UPDATE runs SET status = 'running', current_step = $2 WHERE id = $1`, [runId, step])
+    // A fenced worker claiming the task is positive evidence of executor acceptance.
+    await client.query(`UPDATE runs SET status = 'running', current_step = $2, dispatch_state = 'accepted' WHERE id = $1`, [runId, step])
     return { attempt: claimed.attempt as number }
   })
   if ('cached' in claim) return claim.cached as R
