@@ -13,6 +13,22 @@ test('logging retains correlation and status but excludes secret-bearing fields'
   assert.equal(JSON.parse(lines[0]).status, 502)
 })
 
+test('database probe retains its sanitized target and TLS mode only', () => {
+  const lines = []
+  const api = loader({}, { console: { error: value => lines.push(value) } })('lib/operations.ts')
+  const error = Object.assign(new Error('CANARY_PASSWORD'), { headers: { authorization: 'CANARY_KEY' } })
+  api.withContext({ databaseTarget: 'db.internal:5432/domi', databaseTls: 'require' }, () => api.logFailure('workflow.db_probe', error, 15))
+  assert.equal(lines.length, 1)
+  assert.doesNotMatch(lines[0], /CANARY/)
+  assert.deepEqual(JSON.parse(lines[0]), {
+    event: 'workflow.db_probe',
+    databaseTarget: 'db.internal:5432/domi',
+    databaseTls: 'require',
+    kind: 'Error',
+    durationMs: 15,
+  })
+})
+
 test('pool stays at five, bounds SQL and locks, and handles idle errors', async () => {
   let options; let listener
   const load = loader({ pg: { Pool: class {

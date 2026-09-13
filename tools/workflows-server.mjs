@@ -14,7 +14,7 @@
  * Comando de arranque del servicio en Render:  npm run start:workflows
  */
 import './../lib/workflows.ts'
-import { logFailure } from '../lib/operations.ts'
+import { logFailure, withContext } from '../lib/operations.ts'
 
 /**
  * Render arranca este proceso dos veces con propósitos distintos: primero para
@@ -69,7 +69,9 @@ function probeDatabase() {
     new Promise((_, reject) => setTimeout(() => reject(new Error('no respondió en 15 s')), 15_000)),
   ]).then(
     () => console.log(`[workflows] base de datos: alcanzable en ${Date.now() - started} ms · ${where} · ${ssl}`),
-    (error) => logFailure('workflow.db_probe', error, Date.now() - started),
+    // Mantiene el saneamiento central: sólo este diagnóstico añade el destino
+    // ya sanitizado y el modo TLS; nunca URL, usuario, contraseña o mensaje.
+    (error) => withContext({ databaseTarget: where, databaseTls: ssl }, () => logFailure('workflow.db_probe', error, Date.now() - started)),
   )
 }
 

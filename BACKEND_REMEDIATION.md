@@ -37,6 +37,8 @@ de `lib/triage.ts`.
 
 `DOMI_ADMISSION_ENABLED=true` es necesario en **web y workers**. Ausente, false o
 inválido significa cerrado. No habilitarlo hasta pasar las puertas de publicación.
+Publicar la rama no cambia ese estado: la aplicación pública queda sin aceptar trabajo
+hasta habilitar manualmente ambos servicios por separado.
 Las claves existentes no se cambian automáticamente. El interruptor se comprueba
 al admitir y antes de reservar cada proveedor; no cancela llamadas ya aceptadas.
 

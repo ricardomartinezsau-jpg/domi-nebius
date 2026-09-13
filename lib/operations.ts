@@ -14,7 +14,7 @@ export class PolicyError extends Error {
   }
 }
 
-type Context = { requestId?: string; runId?: string; generation?: number; step?: string; attempt?: number; phase?: string; repair?: boolean; model?: string }
+type Context = { requestId?: string; runId?: string; generation?: number; step?: string; attempt?: number; phase?: string; repair?: boolean; model?: string; databaseTarget?: string; databaseTls?: 'require' | 'sin TLS' }
 const context = new AsyncLocalStorage<Context>()
 export function withContext<T>(fields: Context, work: () => T): T {
   return context.run({ ...context.getStore(), ...fields }, work)

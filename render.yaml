@@ -15,6 +15,13 @@
 #
 # `sync: false` significa exactamente eso: el valor se pega a mano en el panel
 # y nunca viaja en el repositorio.
+#
+# GATE DE ADMISIÓN: publicar esta rama deja DOMI accesible públicamente, pero
+# sin aceptar trabajo ni iniciar consumo. El despliegue no abre esta puerta.
+# Sólo después de aprobación y de verificar la migración 0007 se cambia
+# manualmente `DOMI_ADMISSION_ENABLED=true` por separado en `domi-web` y en
+# `domi-research` (Workflow). Activar uno solo deja el flujo deliberadamente
+# incompleto.
 
 services:
   - type: web
@@ -44,6 +51,10 @@ services:
       # después del primer despliegue: se rellena entonces y se vuelve a lanzar.
       - key: BETTER_AUTH_URL
         sync: false
+      # Esta rama se publica cerrada. El operador la abre manualmente después
+      # de validar la base y de habilitar por separado el Workflow.
+      - key: DOMI_ADMISSION_ENABLED
+        value: "false"
       # Primera mitad del identificador de tarea que dispara la app
       # (domi-research/research). Tiene que ser el nombre exacto del servicio
       # de Workflows creado en el panel.
@@ -61,7 +72,12 @@ services:
 #   Start command    npm run start:workflows
 #
 #   Variables de entorno: DATABASE_URL, DATABASE_SSL, NEBIUS_API_KEY,
-#   LINKUP_API_KEY (los mismos valores que en domi-web).
+#   LINKUP_API_KEY y DOMI_ADMISSION_ENABLED=false (los mismos valores
+#   operativos que en domi-web).
+#
+#   Publicar `domi-web` NO abre este servicio. Tras aprobación y verificación
+#   de la migración 0007, cambiar DOMI_ADMISSION_ENABLED=true aquí por separado
+#   de `domi-web`; hasta entonces la aplicación pública no acepta trabajo.
 #
 # El comando de arranque NO puede ser `npm start`. Ese levanta Next.js, que en
 # este servicio no atiende a nadie, y las tareas nunca quedarían registradas:
