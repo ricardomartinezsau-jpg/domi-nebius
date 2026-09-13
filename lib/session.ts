@@ -111,11 +111,13 @@ export type SessionAction =
   | { type: 'move'; taskId: string; tray: Tray }
   | { type: 'step'; taskId: string; stepId: string }
   | { type: 'research'; taskId: string; runId: string }
+  | { type: 'trayResearch'; tray: Tray; runId: string; title: string }
   | { type: 'start'; taskId: string; runId: string; now: number }
   | { type: 'pause' | 'resume' | 'checkpoint' | 'leave' | 'stop' | 'finish'; now: number }
   | { type: 'resetClock'; runId: string; now: number }
   | { type: 'screen'; screen: 'capture' | 'trays' | 'research'; now: number }
   | { type: 'clockVisible' }
+  | { type: 'addTaskFromResearch'; title: string; tray: Tray; now: number }
 
 export function sessionReducer(session: DomiSession, action: SessionAction): DomiSession {
   switch (action.type) {
@@ -132,6 +134,19 @@ export function sessionReducer(session: DomiSession, action: SessionAction): Dom
         tasks: [...session.tasks, ...tasks], selectedTaskId: suggested?.id ?? tasks[0]?.id ?? session.selectedTaskId,
         dumps: [...session.dumps, { id: action.id, rawText: action.rawText, quick: action.quick, createdAt: action.now, detailStatus: 'pending' }],
         runs: session.runs.map(run => run.activeSince === null ? run : pauseRun(run, action.now)), updatedAt: action.now,
+      }
+    }
+    case 'addTaskFromResearch': {
+      const id = `research:${action.now}:${Math.random().toString(36).slice(2, 6)}`
+      const task: DomiTask = {
+        id, dumpId: id, title: action.title.trim(), tray: action.tray,
+        done: false, doneAt: null, steps: [], order: 0, dependsOn: [], why: '',
+      }
+      return {
+        ...session,
+        tasks: [...session.tasks, task],
+        selectedTaskId: id, // Optional: select the newly created task
+        updatedAt: action.now,
       }
     }
     case 'detail': {
@@ -163,6 +178,10 @@ export function sessionReducer(session: DomiSession, action: SessionAction): Dom
       const task = session.tasks.find(task => task.id === action.taskId)
       if (!task || !z.string().uuid().safeParse(action.runId).success) return session
       return { ...session, research: { runId: action.runId, tray: task.tray, title: task.title } }
+    }
+    case 'trayResearch': {
+      if (!z.string().uuid().safeParse(action.runId).success) return session
+      return { ...session, research: { runId: action.runId, tray: action.tray, title: action.title } }
     }
     case 'start': {
       if (!session.tasks.some(task => task.id === action.taskId && !task.done)) return session

@@ -26,7 +26,7 @@ import { asEvidence, EVIDENCE_RULES, GAP_RULES, groundGuide, type StoredFinding 
 export const RESEARCH_STEPS = ['question-1', 'search-1', 'gap', 'search-2', 'guide'] as const
 export type ResearchStep = (typeof RESEARCH_STEPS)[number]
 
-export type ResearchInput = { taskTitle: string; blocker: string; locale: 'es' | 'en' }
+export type ResearchInput = { taskTitle?: string; contextArea?: 'trabajo' | 'personal' | 'casa' | 'social'; blocker: string; locale: 'es' | 'en' }
 
 const questionSchema = z.object({
   question: z.string().describe('Una sola pregunta buscable en internet, concreta y sin pronombres ambiguos.'),
@@ -67,8 +67,13 @@ export async function createResearchRun(input: ResearchInput): Promise<string> {
 async function readInput(runId: string): Promise<ResearchInput> {
   const row = await queryOne<{ steps: { input: ResearchInput }[] }>('SELECT steps FROM runs WHERE id = $1', [runId])
   const input = row?.steps?.[0]?.input
-  if (!input?.taskTitle) throw new Error('La ejecución no existe o no tiene contexto.')
+  if (!input || (!input.taskTitle && !input.contextArea)) throw new Error('La ejecución no existe o no tiene contexto.')
   return input
+}
+
+function formatContext(input: ResearchInput, isEn: boolean) {
+  if (input.taskTitle) return `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}`
+  return `${isEn ? 'AREA' : 'ÁREA'}: ${input.contextArea}`
 }
 
 /**
@@ -211,7 +216,7 @@ export async function executeQuestionOne(runId: string) {
   return runStep(runId, 'question-1', async () => {
     const { output } = await generateStructured({
       system: askSystem(input.locale),
-      prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}`,
+      prompt: `${formatContext(input, isEn)}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}`,
       schema: questionSchema,
       modelId: RESEARCH_MODEL,
     })
@@ -243,7 +248,7 @@ export async function executeGap(runId: string) {
     const stored = await storedFindings(runId)
     const { output } = await generateStructured({
       system: `${EVIDENCE_RULES}\n${GAP_RULES}\n${isEn ? 'Write in English.' : 'Responde en español.'}`,
-      prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'SAVED FINDINGS' : 'HALLAZGOS GUARDADOS'} (${sourcesCount} ${isEn ? 'sources' : 'fuentes'}):\n${asEvidence(stored)}`,
+      prompt: `${formatContext(input, isEn)}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'SAVED FINDINGS' : 'HALLAZGOS GUARDADOS'} (${sourcesCount} ${isEn ? 'sources' : 'fuentes'}):\n${asEvidence(stored)}`,
       schema: gapSchema,
       modelId: RESEARCH_MODEL,
     })
@@ -290,7 +295,7 @@ export async function executeGuide(runId: string) {
       system: `${EVIDENCE_RULES}\nCompare all rounds, including the follow-up sources. Preserve unresolved conflicts in unconfirmed with both source URLs. The previous disagreement is evidence to re-examine, not an instruction to erase or accept.\n` + (isEn
         ? 'You write a short actionable guide grounded ONLY in the findings given. Every step cites the URLs it came from, copied literally. Anything you cannot support with those findings goes in "unconfirmed" instead of being stated as fact. Steps are 2-10 minutes each.'
         : 'Escribes una guía breve y accionable basada SOLO en los hallazgos dados. Cada paso cita las URLs de donde salió, copiadas literalmente. Lo que no puedas respaldar con esos hallazgos va en "unconfirmed" en vez de afirmarse. Cada paso dura de 2 a 10 minutos.'),
-      prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'FINDINGS' : 'HALLAZGOS'}:\n${evidence}\nPrevious disagreement: ${JSON.stringify(gap?.disagreement || null)}`,
+      prompt: `${formatContext(input, isEn)}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'FINDINGS' : 'HALLAZGOS'}:\n${evidence}\nPrevious disagreement: ${JSON.stringify(gap?.disagreement || null)}`,
       schema: guideSchema,
       modelId: RESEARCH_MODEL,
     })

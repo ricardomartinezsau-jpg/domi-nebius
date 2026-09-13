@@ -1,7 +1,8 @@
 'use client'
 
-import { AlertCircle, ExternalLink, RotateCw, Search, ShieldCheck } from 'lucide-react'
+import { AlertCircle, ExternalLink, Plus, Check, RotateCw, Search, ShieldCheck } from 'lucide-react'
 import { useResearch } from './use-research'
+import { useState } from 'react'
 
 const STEP_LABELS: Record<string, string> = {
   'question-1': '1. Formular pregunta',
@@ -22,8 +23,16 @@ function getDomain(urlStr: string): string {
   }
 }
 
-export function ResearchBlock({ runId }: { runId: string }) {
+export function ResearchBlock({ runId, onConvertToTask }: { runId: string, onConvertToTask?: (title: string) => void }) {
   const { view, error } = useResearch(runId)
+  const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set())
+
+  const handleAdd = (title: string) => {
+    if (onConvertToTask) {
+      onConvertToTask(title)
+      setAddedTasks(prev => new Set(prev).add(title))
+    }
+  }
 
   if (!view) {
     return (
@@ -125,9 +134,21 @@ export function ResearchBlock({ runId }: { runId: string }) {
               <ol className="guide-steps-list">
                 {view.guide.steps.map((step, idx) => (
                   <li key={idx} className="guide-step-item">
-                    <div className="step-content">
-                      <strong className="step-title">{step.title}</strong>
-                      <p className="step-detail">{step.detail}</p>
+                    <div className="step-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <strong className="step-title">{step.title}</strong>
+                        <p className="step-detail">{step.detail}</p>
+                      </div>
+                      {onConvertToTask && (
+                        <button 
+                          className="quiet" 
+                          onClick={() => handleAdd(step.title)} 
+                          disabled={addedTasks.has(step.title)}
+                          style={{ flexShrink: 0, marginLeft: '12px', border: '1px solid var(--domi-linea)', borderRadius: '20px', padding: '6px 14px', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          {addedTasks.has(step.title) ? <><Check size={14} /> Añadido</> : <><Plus size={14} /> A la bandeja</>}
+                        </button>
+                      )}
                     </div>
 
                     {/* ESTADO 3: CON FUENTES CITADAS Y ENLACES */}

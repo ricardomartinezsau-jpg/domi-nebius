@@ -17,7 +17,11 @@ export function ResearchWindow({ research, dispatch }: { research: NonNullable<D
       <p className="eyebrow">Un espacio para aclarar</p>
       <h1 ref={heading} tabIndex={-1}>{research.title}</h1>
       <p className="intro">Revisa las fuentes a tu ritmo. Tú decides qué hacer con lo encontrado.</p>
-      <ResearchBlock key={research.runId} runId={research.runId} />
+      <ResearchBlock 
+        key={research.runId} 
+        runId={research.runId} 
+        onConvertToTask={(title) => dispatch({ type: 'addTaskFromResearch', title, tray: research.tray, now: Date.now() })} 
+      />
     </main>
   </div>
 }

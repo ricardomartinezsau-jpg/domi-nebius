@@ -4,6 +4,66 @@ import { useRef } from 'react'
 import { ArrowRight, BriefcaseBusiness, Heart, House, Users, Check } from 'lucide-react'
 import { TRAYS, type DomiSession, type DomiTask, type SessionAction, type Tray } from '@/lib/session'
 import { Brand } from './brand'
+import { ResearchBadge } from './research-badge'
+import { useState } from 'react'
+
+function TrayResearchInput({ tray, session, dispatch }: { tray: (typeof TRAYS)[number], session: DomiSession, dispatch: (action: SessionAction) => void }) {
+  const [blocker, setBlocker] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleResearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!blocker.trim() || submitting) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contextArea: tray.id, blocker })
+      })
+      const data = await res.json()
+      if (res.status === 202 && typeof data.runId === 'string') {
+        dispatch({ type: 'trayResearch', tray: tray.id, runId: data.runId, title: blocker.trim() })
+        setBlocker('')
+      } else {
+        setError(data.error || 'Error al iniciar investigación')
+      }
+    } catch {
+      setError('Error de conexión')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleResearch} className="tray-research-form" style={{ marginTop: '16px', borderTop: '1px dashed var(--domi-linea)', paddingTop: '16px' }}>
+      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--domi-tinta-muted)', marginBottom: '8px' }}>
+        ¿Algo te detiene en esta área?
+      </label>
+      <div style={{ position: 'relative' }}>
+        <input 
+          type="text" 
+          value={blocker}
+          onChange={e => setBlocker(e.target.value)}
+          disabled={submitting}
+          placeholder="Ej. ¿Cómo asigno una IP estática?"
+          style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--domi-linea)', backgroundColor: '#f9f9f8', fontSize: '14px', color: 'var(--domi-tinta)' }}
+        />
+        <button type="submit" disabled={!blocker.trim() || submitting} style={{ position: 'absolute', right: '4px', top: '4px', bottom: '4px', backgroundColor: 'var(--domi-azul-apoyo)', color: '#fff', border: 'none', borderRadius: '8px', padding: '0 12px', fontWeight: 600, cursor: 'pointer', opacity: blocker.trim() && !submitting ? 1 : 0.5 }}>
+          Investigar
+        </button>
+      </div>
+      {error && <p style={{ color: 'var(--domi-error)', fontSize: '12px', marginTop: '4px' }}>{error}</p>}
+      {session.research?.tray === tray.id && (
+        <div style={{ marginTop: '12px' }}>
+          <ResearchBadge runId={session.research.runId} onOpen={() => dispatch({ type: 'screen', screen: 'research', now: Date.now() })} />
+        </div>
+      )}
+    </form>
+  )
+}
 
 type Props = { session: DomiSession; dispatch: (action: SessionAction) => void; retryDetail: (dumpId: string) => void }
 const icons = { trabajo: BriefcaseBusiness, personal: Heart, casa: House, social: Users }
@@ -75,6 +135,7 @@ export function Trays({ session, dispatch, retryDetail }: Props) {
               <label className="move-label"><span>Mover a</span><select value={task.tray} onChange={event => dispatch({ type: 'move', taskId: task.id, tray: event.target.value as Tray })} aria-label={`Mover ${task.title} a otra bandeja`}>{TRAYS.map(destination => <option key={destination.id} value={destination.id}>{destination.name}</option>)}</select></label>
             </article>)}</div>
             {!tasks.length && <p className="tray-empty">Mesa libre en {tray.name}</p>}
+            <TrayResearchInput tray={tray} session={session} dispatch={dispatch} />
           </section>
         })}
       </div>

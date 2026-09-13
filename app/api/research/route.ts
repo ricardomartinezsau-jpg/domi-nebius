@@ -56,10 +56,11 @@ async function dispatchResearch(runId: string): Promise<void> {
  * El trabajo no depende de que siga mirando.
  */
 const startSchema = z.object({
-  taskTitle: z.string().trim().min(1, 'Falta la tarea.').max(300),
+  taskTitle: z.string().trim().max(300).optional(),
+  contextArea: z.enum(['trabajo', 'personal', 'casa', 'social']).optional(),
   blocker: z.string().trim().min(1, '¿Qué te frena?').max(1000),
   locale: z.enum(['es', 'en']).default('es'),
-})
+}).refine(data => data.taskTitle || data.contextArea, { message: 'Debe haber una tarea o un área de contexto.' })
 
 const resumeSchema = z.object({ runId: z.string().uuid() })
 
