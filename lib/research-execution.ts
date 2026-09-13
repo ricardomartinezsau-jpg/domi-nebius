@@ -37,7 +37,7 @@ export async function runStep<W, R = W>(runId: string, step: string, work: () =>
   const generation = currentGeneration(runId)
   const claim = await transaction(async client => {
     const run = await lockCurrentRun(client, runId, true)
-    const existing = (await client.query('SELECT status, result, attempt FROM run_steps WHERE run_id = $1 AND step = $2', [runId, step])).rows[0]
+    const existing = (await client.query("SELECT status, result, attempt, started_at < now() - interval '5 minutes' AS expired FROM run_steps WHERE run_id = $1 AND step = $2", [runId, step])).rows[0]
     if (existing?.status === 'done') return { cached: existing.result as R }
     if (run.status === 'done') throw new StaleExecutionError()
     const claimed = (await client.query(`INSERT INTO run_steps (run_id, step, status, attempt, generation)
@@ -48,7 +48,7 @@ export async function runStep<W, R = W>(runId: string, step: string, work: () =>
         OR (run_steps.status = 'running' AND run_steps.started_at < now() - interval '5 minutes'))
       RETURNING attempt`, [runId, step, generation, LIMITS.stepAttempts])).rows[0]
     if (!claimed) {
-      if (existing?.attempt >= LIMITS.stepAttempts && existing.status === 'failed') throw new PolicyError(409, 'ATTEMPTS_EXHAUSTED')
+      if (existing?.attempt >= LIMITS.stepAttempts && (existing.status === 'failed' || existing.expired)) throw new PolicyError(409, 'ATTEMPTS_EXHAUSTED')
       throw new StepBusyError(step)
     }
     await client.query(`UPDATE runs SET status = 'running', current_step = $2 WHERE id = $1`, [runId, step])

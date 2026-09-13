@@ -43,6 +43,7 @@ export async function claimDispatch(runId: string, owner: string, remote: boolea
       FROM runs WHERE id = $1 AND guest_owner = $2 FOR UPDATE`, [runId, owner])).rows[0]
     if (!run) throw new PolicyError(404, 'NOT_FOUND')
     if (run.status === 'done') return { claimed: false, generation: run.generation, state: 'done' }
+    if (!remote && process.env.NODE_ENV === 'production') throw new PolicyError(503, 'WORKFLOW_NOT_CONFIGURED')
     // Elapsed time cannot establish non-acceptance; an operator must reconcile these.
     if (['sending', 'unknown'].includes(run.dispatch_state)) return { claimed: false, generation: run.generation, state: 'unknown' }
     if (run.dispatch_state === 'accepted' && run.recent && run.status !== 'failed') return { claimed: false, generation: run.generation, state: 'accepted' }

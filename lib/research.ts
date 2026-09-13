@@ -206,13 +206,12 @@ export async function executeGuide(runId: string) {
       modelId: RESEARCH_MODEL,
     })
 
-    return groundGuide(output, stored, gap?.disagreement || null) satisfies Guide & { disagreement: string | null }
+    const grounded = groundGuide(output, stored, gap?.disagreement || null) satisfies Guide & { disagreement: string | null }
+    if (!grounded.steps.length) throw new PolicyError(409, 'UNGROUNDED_GUIDE')
+    return grounded
   })
 
-  // Aquí NO se declara terminada la ejecución. Este paso puede devolver una
-  // guía con cero pasos —si ningún paso citó una fuente recuperable, el filtro
-  // de arriba los quita todos— y antes eso bastaba para marcarla completada.
-  // Quien declara el final es `finishRun`, y sólo con evidencia delante.
+  // A grounded guide is necessary but not sufficient: finishRun owns success.
   return guide
 }
 
@@ -244,24 +243,45 @@ export function missingEvidence(evidence: RunEvidence): string[] {
 }
 
 export async function finishRun(runId: string): Promise<void> {
-  const row = await queryOne<{ findings: string; sources: string; steps: string }>(
+  await transaction(async client => {
+  const run = await lockCurrentRun(client, runId, true)
+  if (run.status === 'done') return
+  const required = (await client.query(`SELECT count(*)::int AS n FROM run_steps
+    WHERE run_id = $1 AND step = ANY($2::text[]) AND status = 'done'`, [runId, RESEARCH_STEPS])).rows[0]
+  if (required?.n !== RESEARCH_STEPS.length) throw new PolicyError(409, 'INCOMPLETE_STEPS')
+  const row = (await client.query(
     `SELECT
        (SELECT count(*) FROM findings WHERE run_id = $1) AS findings,
        (SELECT count(DISTINCT source_url) FROM findings WHERE run_id = $1) AS sources,
        coalesce((SELECT jsonb_array_length(coalesce(result -> 'steps', '[]'::jsonb))
                  FROM run_steps WHERE run_id = $1 AND step = 'guide' AND status = 'done'), 0) AS steps`,
     [runId],
-  )
+  )).rows[0]
   const missing = missingEvidence({ findings: Number(row?.findings ?? 0), sources: Number(row?.sources ?? 0), steps: Number(row?.steps ?? 0) })
   if (missing.length) throw new Error(`La investigación no produjo ${missing.join(', ')}. No se declara completada.`)
   // El error de un intento anterior se borra al terminar bien: una ejecución
   // que se recuperó no puede seguir mostrando el fallo del que se recuperó.
-  await query(`UPDATE runs SET status = 'done', current_step = NULL, ok = true, error = NULL WHERE id = $1`, [runId])
+  await client.query(`UPDATE runs SET status = 'done', current_step = NULL, ok = true, error = NULL
+    WHERE id = $1 AND generation = $2 AND status <> 'done'`, [runId, currentGeneration(runId)])
+  })
 }
 
 /** Deja el fallo escrito en la ejecución, no sólo en el paso que lo provocó. */
-export async function markRunFailed(runId: string, message: string): Promise<void> {
-  await query(`UPDATE runs SET status = 'failed', ok = false, error = $2 WHERE id = $1`, [runId, message])
+export async function markRunFailed(runId: string, error: unknown): Promise<void> {
+  try {
+    await transaction(async client => {
+      const run = await lockCurrentRun(client, runId, true)
+      if (run.status === 'done') return
+      const busy = await client.query(`SELECT step FROM run_steps WHERE run_id = $1 AND status = 'running'
+        AND started_at >= now() - interval '5 minutes' LIMIT 1`, [runId])
+      if (busy.rows.length) return
+      await client.query(`UPDATE runs SET status = 'failed', ok = false, error = $3
+        WHERE id = $1 AND generation = $2 AND status <> 'done'`, [runId, currentGeneration(runId), safeRunError(error)])
+    })
+  } catch (secondary) {
+    if (secondary instanceof StaleExecutionError) return
+    throw secondary
+  }
 }
 
 /**
@@ -282,7 +302,7 @@ export async function advanceResearch(runId: string, generation: number): Promis
     // la protección funcionando. Marcarla 'failed' aquí le mentiría a quien
     // está esperando, porque el otro ejecutor va a seguir la cadena.
     if (error instanceof StepBusyError || error instanceof StaleExecutionError) return
-    await markRunFailed(runId, error instanceof Error ? error.message : 'Fallo sin detalle.')
+    try { await markRunFailed(runId, error) } catch (secondary) { logFailure('research.failure_persist', secondary) }
     throw error
   }
   })

@@ -6,7 +6,6 @@ import { PolicyError, logFailure, requestId, withContext } from './operations.ts
 
 export async function dispatchResearch(runId: string, owner: string) {
   const token = process.env.RENDER_API_KEY?.trim()
-  if (!token && process.env.NODE_ENV === 'production') throw new PolicyError(503, 'WORKFLOW_NOT_CONFIGURED')
   const claim = await claimDispatch(runId, owner, Boolean(token))
   if (!claim.claimed) return { runId, accepted: claim.state !== 'unknown', dispatchState: claim.state }
   const { generation } = claim
