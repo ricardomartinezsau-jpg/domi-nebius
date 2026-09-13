@@ -288,6 +288,7 @@ kbd { padding:2px 5px; border:1px solid #252a341f; border-radius:4px; font:inher
 .capture-reassurance svg { flex:none; }
 .capture-reassurance strong { color:var(--domi-blue); font-weight:600; }
 .capture-shell .capture-actions .primary { color:var(--cal); box-shadow:0 2px 6px #2447c640,0 8px 18px -4px #2447c647; }
+.capture-shell .capture-actions .primary:focus-visible { box-shadow:0 0 0 3px rgba(36,71,198,.28),0 2px 6px #2447c640,0 8px 18px -4px #2447c647; }
 .capture-shell .error { color:var(--domi-error); }
 .capture-manifesto { display:flex; align-items:center; gap:6px; border-top:1px solid #252a340f; padding-top:24px; margin-top:0; font-size:13px; }
 .capture-footer-dot { flex:none; width:4px; height:4px; border-radius:50%; background:var(--domi-barro); }
