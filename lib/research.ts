@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { query, queryOne } from './db.ts'
 import { confidenceFrom, research, type Source } from './linkup.ts'
-import { DEFAULT_MODEL, RESEARCH_MODEL, generateStructured } from './nebius.ts'
+import { RESEARCH_MODEL, generateStructured } from './nebius.ts'
 import { asEvidence, EVIDENCE_RULES, GAP_RULES, groundGuide, type StoredFinding } from './research-evidence.ts'
 
 /**
@@ -54,15 +54,7 @@ export type Guide = z.infer<typeof guideSchema>
 type StepRow = { step: string; status: string; result: unknown; error: string | null; attempt: number }
 
 /** Crea la ejecución. No investiga nada todavía: eso lo hace `advanceResearch`. */
-export async function createResearchRun(input: ResearchInput): Promise<string> {
-  const row = await queryOne<{ id: string }>(
-    `INSERT INTO runs (anonymous, model, status, current_step, steps)
-     VALUES (true, $1, 'queued', $2, $3::jsonb) RETURNING id`,
-    [DEFAULT_MODEL, RESEARCH_STEPS[0], JSON.stringify([{ input }])],
-  )
-  if (!row) throw new Error('No se pudo crear la ejecución de investigación.')
-  return row.id
-}
+export { createResearchRun } from './research-lifecycle.ts'
 
 async function readInput(runId: string): Promise<ResearchInput> {
   const row = await queryOne<{ steps: { input: ResearchInput }[] }>('SELECT steps FROM runs WHERE id = $1', [runId])
@@ -362,7 +354,7 @@ export async function markRunFailed(runId: string, message: string): Promise<voi
  * Avanza la ejecución hasta terminarla. Es reanudable: llamarla otra vez
  * después de un fallo retoma en el primer paso que no esté terminado.
  */
-export async function advanceResearch(runId: string): Promise<void> {
+export async function advanceResearch(runId: string, _generation: number): Promise<void> {
   try {
     await executeQuestionOne(runId)
     await executeSearchOne(runId)
@@ -392,10 +384,11 @@ export type ResearchView = {
 }
 
 /** Todo lo que se puede recuperar de una ejecución, con o sin la pestaña abierta. */
-export async function readResearch(runId: string): Promise<ResearchView | null> {
+export async function readResearch(runId: string, owner: string): Promise<ResearchView | null> {
+  if (!owner) return null
   const run = await queryOne<{ id: string; status: ResearchView['status']; current_step: string | null; error: string | null }>(
-    'SELECT id, status, current_step, error FROM runs WHERE id = $1',
-    [runId],
+    'SELECT id, status, current_step, error FROM runs WHERE id = $1 AND guest_owner = $2',
+    [runId, owner],
   )
   if (!run) return null
 
