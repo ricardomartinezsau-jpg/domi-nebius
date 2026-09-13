@@ -141,12 +141,23 @@ export function ResearchBlock({ runId, onConvertToTask }: { runId: string, onCon
                       </div>
                       {onConvertToTask && (
                         <button 
-                          className="quiet" 
+                          type="button"
+                          className={`btn-convert-task ${addedTasks.has(step.title) ? 'is-added' : ''}`}
                           onClick={() => handleAdd(step.title)} 
                           disabled={addedTasks.has(step.title)}
-                          style={{ flexShrink: 0, marginLeft: '12px', border: '1px solid var(--domi-linea)', borderRadius: '20px', padding: '6px 14px', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+                          title={addedTasks.has(step.title) ? 'Paso añadido a tu bandeja' : 'Convertir este paso en una tarea de tu bandeja'}
                         >
-                          {addedTasks.has(step.title) ? <><Check size={14} /> Añadido</> : <><Plus size={14} /> A la bandeja</>}
+                          {addedTasks.has(step.title) ? (
+                            <>
+                              <Check size={14} strokeWidth={2.8} />
+                              <span>✓ Añadido</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus size={14} strokeWidth={2.5} />
+                              <span>＋ A la bandeja</span>
+                            </>
+                          )}
                         </button>
                       )}
                     </div>
@@ -186,22 +197,35 @@ export function ResearchBlock({ runId, onConvertToTask }: { runId: string, onCon
           {/* ESTADO 4: SIN CONFIRMAR (Diferenciación rigurosa de hechos) */}
           {(view.guide.unconfirmed.length > 0 || view.guide.disagreement) && (
             <div className="research-unconfirmed-box">
-              <div className="unconfirmed-header">
-                <AlertCircle size={16} />
-                <strong>Sin confirmar con fuentes fidedignas</strong>
-              </div>
-              <p className="unconfirmed-note">
-                Lo que la investigación no logró corroborar plenamente en las fuentes encontradas. No es un fallo: es la diferencia entre informar con rigor y adivinar. Tómalo con criterio propio:
-              </p>
-              <ul className="unconfirmed-items">
-                {view.guide.unconfirmed.map((item, i) => (
-                  <li key={i}>{item}</li>
-                ))}
-              </ul>
+              {view.guide.unconfirmed.length > 0 && (
+                <>
+                  <div className="unconfirmed-header">
+                    <AlertCircle size={16} />
+                    <strong>Sin confirmar con fuentes fidedignas</strong>
+                  </div>
+                  <p className="unconfirmed-note">
+                    Lo que la investigación no logró corroborar plenamente en las fuentes encontradas. No es un fallo: es la diferencia entre informar con rigor y adivinar. Tómalo con criterio propio:
+                  </p>
+                  <ul className="unconfirmed-items">
+                    {view.guide.unconfirmed.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {/* CONTRADICCIONES CRÍTICAS (Esto no me cuadra) — Sin alarma roja ni pánico */}
               {view.guide.disagreement && (
-                <div className="disagreement-box">
-                  <strong>Esto no me cuadra (contradicción detectada entre fuentes):</strong>
-                  <p>{view.guide.disagreement}</p>
+                <div className="contradiction-box" aria-label="Contradicción detectada entre fuentes">
+                  <div className="contradiction-header">
+                    <span className="contradiction-badge">Transparencia Documental</span>
+                    <strong className="contradiction-title">Esto no me cuadra (contradicción detectada entre fuentes):</strong>
+                  </div>
+                  <p className="contradiction-body">{view.guide.disagreement}</p>
+                  <div className="contradiction-sovereignty-note">
+                    <ShieldCheck size={14} />
+                    <span>Domi no toma partido a ciegas: te mostramos la discrepancia para que decidas con los hechos verificados.</span>
+                  </div>
                 </div>
               )}
             </div>

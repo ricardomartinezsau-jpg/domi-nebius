@@ -12,6 +12,8 @@ function TrayResearchInput({ tray, session, dispatch }: { tray: (typeof TRAYS)[n
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const activeResearch = session.research?.tray === tray.id ? session.research : null
+
   const handleResearch = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!blocker.trim() || submitting) return
@@ -38,30 +40,41 @@ function TrayResearchInput({ tray, session, dispatch }: { tray: (typeof TRAYS)[n
   }
 
   return (
-    <form onSubmit={handleResearch} className="tray-research-form" style={{ marginTop: '16px', borderTop: '1px dashed var(--domi-linea)', paddingTop: '16px' }}>
-      <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--domi-tinta-muted)', marginBottom: '8px' }}>
-        ¿Algo te detiene en esta área?
-      </label>
-      <div style={{ position: 'relative' }}>
-        <input 
-          type="text" 
-          value={blocker}
-          onChange={e => setBlocker(e.target.value)}
-          disabled={submitting}
-          placeholder="Ej. ¿Cómo asigno una IP estática?"
-          style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--domi-linea)', backgroundColor: '#f9f9f8', fontSize: '14px', color: 'var(--domi-tinta)' }}
+    <div className="tray-research-dock">
+      {activeResearch ? (
+        <ResearchBadge 
+          runId={activeResearch.runId} 
+          title={activeResearch.title}
+          onOpen={() => dispatch({ type: 'screen', screen: 'research', now: Date.now() })} 
         />
-        <button type="submit" disabled={!blocker.trim() || submitting} style={{ position: 'absolute', right: '4px', top: '4px', bottom: '4px', backgroundColor: 'var(--domi-azul-apoyo)', color: '#fff', border: 'none', borderRadius: '8px', padding: '0 12px', fontWeight: 600, cursor: 'pointer', opacity: blocker.trim() && !submitting ? 1 : 0.5 }}>
-          Investigar
-        </button>
-      </div>
-      {error && <p style={{ color: 'var(--domi-error)', fontSize: '12px', marginTop: '4px' }}>{error}</p>}
-      {session.research?.tray === tray.id && (
-        <div style={{ marginTop: '12px' }}>
-          <ResearchBadge runId={session.research.runId} onOpen={() => dispatch({ type: 'screen', screen: 'research', now: Date.now() })} />
-        </div>
+      ) : (
+        <form onSubmit={handleResearch} className="passive-input-wrap">
+          <label htmlFor={`research-input-${tray.id}`} className="passive-input-label">
+            ¿Algo te detiene en esta área?
+          </label>
+          <div className="passive-input-group">
+            <input 
+              id={`research-input-${tray.id}`}
+              type="text" 
+              value={blocker}
+              onChange={e => setBlocker(e.target.value)}
+              disabled={submitting}
+              placeholder="Ej. ¿Cómo asigno una IP estática en Render?"
+              className="passive-input-field"
+            />
+            <button 
+              type="submit" 
+              disabled={!blocker.trim() || submitting} 
+              className="passive-submit-btn"
+              title="Aclarar con investigación en segundo plano"
+            >
+              <span>Aclarar</span>
+            </button>
+          </div>
+          {error && <p className="tray-research-error">{error}</p>}
+        </form>
       )}
-    </form>
+    </div>
   )
 }
 
