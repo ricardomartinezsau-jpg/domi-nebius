@@ -107,7 +107,7 @@ export function Dominio({ session, dispatch, retryDetail }: Props) {
                 value={blocker}
                 onChange={e => setBlocker(e.target.value)}
                 placeholder="Describe qué necesitas saber o qué te impide avanzar..."
-                style={{ width: '100%', minHeight: 80, padding: 12, borderRadius: 8, background: '#0a101d', border: '1px solid #ffffff14', color: '#f5f5ef', marginBottom: 16, resize: 'vertical', fontFamily: 'inherit' }}
+                style={{ width: '100%', minHeight: 80, padding: 12, borderRadius: 12, background: '#0a101d', border: '1px solid #ffffff14', color: '#f5f5ef', marginBottom: 16, resize: 'vertical', fontFamily: 'inherit' }}
               />
               {session.research && <p className="meta">La nueva consulta sustituirá el acceso a la investigación anterior en tus bandejas.</p>}
               <div style={{ display: 'flex', gap: 12 }}>

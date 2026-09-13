@@ -149,13 +149,13 @@ export function ResearchBlock({ runId, onConvertToTask }: { runId: string, onCon
                         >
                           {addedTasks.has(step.title) ? (
                             <>
-                              <Check size={14} strokeWidth={2.8} />
-                              <span>✓ Añadido</span>
+                              <Check size={14} strokeWidth={2.5} aria-hidden="true" />
+                              <span>Añadido</span>
                             </>
                           ) : (
                             <>
-                              <Plus size={14} strokeWidth={2.5} />
-                              <span>＋ A la bandeja</span>
+                              <Plus size={14} strokeWidth={2.5} aria-hidden="true" />
+                              <span>A la bandeja</span>
                             </>
                           )}
                         </button>
