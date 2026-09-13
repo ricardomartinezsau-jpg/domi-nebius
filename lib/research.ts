@@ -1,5 +1,8 @@
 import { z } from 'zod'
-import { query, queryOne } from './db.ts'
+import { query, queryOne, transaction, type SqlClient } from './db.ts'
+import { runStep, StepBusyError, StaleExecutionError, withExecution, lockCurrentRun, currentGeneration, safeRunError } from './research-execution.ts'
+import { PolicyError, logFailure } from './operations.ts'
+export { StepBusyError } from './research-execution.ts'
 import { confidenceFrom, research, type Source } from './linkup.ts'
 import { RESEARCH_MODEL, generateStructured } from './nebius.ts'
 import { asEvidence, EVIDENCE_RULES, GAP_RULES, groundGuide, type StoredFinding } from './research-evidence.ts'
@@ -11,10 +14,10 @@ import { asEvidence, EVIDENCE_RULES, GAP_RULES, groundGuide, type StoredFinding 
  *
  * 1. **Cada paso se guarda antes de pasar al siguiente.** Si el proceso muere a
  *    la mitad —se cae el servidor, se recarga la página, se agota la red— lo
- *    hecho hasta ahí no se repite.
+ *    persistido como done se reutiliza; trabajo externo no persistido puede repetirse.
  * 2. **Reintentar es seguro.** La clave primaria (run_id, step) hace que el
  *    segundo intento encuentre el resultado del primero en vez de rehacerlo.
- *    No se cobra dos veces la misma búsqueda ni se duplican hallazgos.
+ *    Una muerte entre proveedor y commit puede repetir coste, acotado por cuotas.
  * 3. **La segunda búsqueda sale de lo guardado.** El paso `gap` lee los
  *    hallazgos ya escritos en la base, no variables en memoria del proceso.
  *    Esa es la diferencia entre investigar y encadenar dos búsquedas sueltas.
@@ -68,109 +71,27 @@ function formatContext(input: ResearchInput, isEn: boolean) {
   return `${isEn ? 'AREA' : 'ÁREA'}: ${input.contextArea}`
 }
 
-/**
- * Cuánto vale el permiso para ejecutar un paso antes de que otro pueda
- * quitárselo. Existe porque un proceso que muere de golpe deja su paso en
- * 'running' para siempre, y sin caducidad nadie podría recuperarlo nunca.
- *
- * Más largo que el paso más lento (el de la guía, 180 s en Render) con margen:
- * el precio de equivocarse por corto es que dos ejecutores se pisen y se pague
- * dos veces la misma búsqueda.
- */
-const STEP_LEASE_MS = 300_000
-
-/** Se lanza cuando otro ejecutor tiene el paso en marcha ahora mismo. */
-export class StepBusyError extends Error {
-  constructor(step: string) {
-    super(`El paso ${step} lo está ejecutando otro proceso.`)
-    this.name = 'StepBusyError'
-  }
-}
-
-/**
- * Ejecuta un paso una sola vez en la vida de la ejecución.
- *
- * Quién corre lo decide una sola escritura atómica: se reclama el paso si nadie
- * lo tiene, si el intento anterior falló, o si quien lo tenía lleva más de
- * STEP_LEASE_MS sin terminar (murió). Reclamar un paso que otro está
- * ejecutando ahora mismo NO está permitido, y esa es la diferencia: antes dos
- * ejecutores simultáneos —el de Render y el de reserva— podían pagar los dos
- * la misma búsqueda y duplicar los hallazgos.
- *
- * Un paso ya terminado devuelve su resultado sin llamar a nadie.
- */
-async function runStep<T>(runId: string, step: ResearchStep, work: () => Promise<T>): Promise<T> {
-  const existing = await queryOne<StepRow>('SELECT step, status, result, error, attempt FROM run_steps WHERE run_id = $1 AND step = $2', [runId, step])
-  if (existing?.status === 'done') return existing.result as T
-
-  const claimed = await queryOne<{ step: string }>(
-    `INSERT INTO run_steps (run_id, step, status, attempt) VALUES ($1, $2, 'running', 1)
-     ON CONFLICT (run_id, step) DO UPDATE SET status = 'running', attempt = run_steps.attempt + 1, error = NULL, started_at = now()
-     WHERE run_steps.status = 'failed'
-        OR (run_steps.status = 'running' AND run_steps.started_at < now() - ($3::int * interval '1 millisecond'))
-     RETURNING step`,
-    [runId, step, STEP_LEASE_MS],
-  )
-  if (!claimed) {
-    const settled = await queryOne<StepRow>('SELECT status, result FROM run_steps WHERE run_id = $1 AND step = $2', [runId, step])
-    // Terminó entre las dos consultas: su resultado sirve igual.
-    if (settled?.status === 'done') return settled.result as T
-    // Lo tiene otro y sigue vivo. Rendirse aquí es correcto: el que lo tiene
-    // va a seguir la cadena. Fingir que salió bien devolvería undefined al
-    // paso siguiente y el fallo aparecería más adelante, disfrazado.
-    throw new StepBusyError(step)
-  }
-
-  await query('UPDATE runs SET status = $2, current_step = $3 WHERE id = $1', [runId, 'running', step])
-  try {
-    const result = await work()
-    await query(
-      `UPDATE run_steps SET status = 'done', result = $3::jsonb, finished_at = now() WHERE run_id = $1 AND step = $2`,
-      [runId, step, JSON.stringify(result ?? null)],
-    )
-    return result
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Fallo sin detalle.'
-    await query(`UPDATE run_steps SET status = 'failed', error = $3, finished_at = now() WHERE run_id = $1 AND step = $2`, [runId, step, message])
-    throw error
-  }
-}
-
-/**
- * Guarda pregunta y hallazgos de una vuelta.
- *
- * El índice único (run_id, round) es el cerrojo de abajo: si otro ejecutor ya
- * escribió esta vuelta, aquí no se inserta nada y se reusa lo suyo. Cuesta una
- * búsqueda pagada de más en ese caso raro, pero nunca hallazgos duplicados, que
- * es lo que la persona vería y lo que el premio prohíbe.
- */
-async function saveFindings(runId: string, round: number, ask: { question: string; askedBecause: string }, answer: { answer: string; sources: Source[] }) {
-  const question = await queryOne<{ id: string }>(
+/** A round and its step result commit together, under the current execution fence. */
+async function saveFindings(client: SqlClient, runId: string, round: number, ask: { question: string; askedBecause: string }, answer: { answer: string; sources: Source[] }) {
+  const unique = [...new Map(answer.sources.map(source => [source.url, source])).values()].slice(0, 8)
+  if (!unique.length) throw new PolicyError(409, 'NO_SOURCES')
+  const question = (await client.query(
     `INSERT INTO research_questions (run_id, round, question, asked_because, status)
-     VALUES ($1, $2, $3, $4, 'answered')
-     ON CONFLICT (run_id, round) DO NOTHING
-     RETURNING id`,
+     VALUES ($1, $2, $3, $4, 'answered') ON CONFLICT (run_id, round) DO NOTHING RETURNING id`,
     [runId, round, ask.question, ask.askedBecause],
-  )
-  if (!question) {
-    const existing = await queryOne<{ id: string; question: string }>(
-      'SELECT id, question FROM research_questions WHERE run_id = $1 AND round = $2',
-      [runId, round],
-    )
-    if (!existing) throw new Error('No se pudo guardar la pregunta de investigación.')
-    const already = await queryOne<{ n: number }>('SELECT count(*)::int AS n FROM findings WHERE question_id = $1', [existing.id])
-    return { questionId: existing.id, sources: already?.n ?? 0, confidence: 'single' as const, reused: true }
-  }
-
-  const confidence = confidenceFrom(answer.sources)
-  for (const source of answer.sources.slice(0, 8)) {
-    await query(
+  )).rows[0]
+  // An existing question WITHOUT a done search step is not proof of a complete round.
+  // Do not silently reuse or overwrite historical partial data; require operator review.
+  if (!question) throw new PolicyError(409, 'INCOMPLETE_ROUND')
+  const confidence = confidenceFrom(unique)
+  for (const source of unique) {
+    await client.query(
       `INSERT INTO findings (question_id, run_id, claim, source_url, source_name, snippet, confidence)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [question.id, runId, answer.answer, source.url, source.name, source.snippet ?? null, confidence],
     )
   }
-  return { questionId: question.id, sources: answer.sources.length, confidence }
+  return { questionId: question.id as string, sources: unique.length, confidence }
 }
 
 /**
@@ -222,10 +143,8 @@ export async function executeSearchOne(runId: string) {
     [runId],
   )
   if (!first?.result) throw new Error('No se encontró el resultado de question-1 para ejecutar search-1.')
-  return runStep(runId, 'search-1', async () => {
-    const answer = await research(first.result.question)
-    return saveFindings(runId, 1, first.result, answer)
-  })
+  return runStep(runId, 'search-1', () => research(first.result.question),
+    (client, answer) => saveFindings(client, runId, 1, first.result, answer))
 }
 
 export async function executeGap(runId: string) {
@@ -256,17 +175,12 @@ export async function executeSearchTwo(runId: string) {
   if (!gapRow?.result) throw new Error('No se encontró el resultado de gap para ejecutar search-2.')
   const gap = gapRow.result
   if (gap.needsMore && gap.question.trim()) {
-    return runStep(runId, 'search-2', async () => {
-      const answer = await research(gap.question)
-      return saveFindings(runId, 2, { question: gap.question, askedBecause: gap.askedBecause }, answer)
-    })
+    return runStep(runId, 'search-2', () => research(gap.question),
+      (client, answer) => saveFindings(client, runId, 2, { question: gap.question, askedBecause: gap.askedBecause }, answer))
   } else {
-    await query(
-      `INSERT INTO run_steps (run_id, step, status, result, finished_at) VALUES ($1, 'search-2', 'done', $2::jsonb, now())
-       ON CONFLICT (run_id, step) DO NOTHING`,
-      [runId, JSON.stringify({ skipped: true, reason: gap.disagreement || 'Los hallazgos de la primera vuelta ya cubren la tarea.' })],
-    )
-    return { skipped: true }
+    return runStep(runId, 'search-2', async () => ({
+      skipped: true, reason: gap.disagreement || 'Los hallazgos de la primera vuelta ya cubren la tarea.',
+    }))
   }
 }
 
@@ -354,7 +268,8 @@ export async function markRunFailed(runId: string, message: string): Promise<voi
  * Avanza la ejecución hasta terminarla. Es reanudable: llamarla otra vez
  * después de un fallo retoma en el primer paso que no esté terminado.
  */
-export async function advanceResearch(runId: string, _generation: number): Promise<void> {
+export async function advanceResearch(runId: string, generation: number): Promise<void> {
+  return withExecution(runId, generation, async () => {
   try {
     await executeQuestionOne(runId)
     await executeSearchOne(runId)
@@ -366,10 +281,11 @@ export async function advanceResearch(runId: string, _generation: number): Promi
     // Que otro ejecutor tenga un paso no es un fallo de la investigación: es
     // la protección funcionando. Marcarla 'failed' aquí le mentiría a quien
     // está esperando, porque el otro ejecutor va a seguir la cadena.
-    if (error instanceof StepBusyError) return
+    if (error instanceof StepBusyError || error instanceof StaleExecutionError) return
     await markRunFailed(runId, error instanceof Error ? error.message : 'Fallo sin detalle.')
     throw error
   }
+  })
 }
 
 export type ResearchView = {
