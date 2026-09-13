@@ -14,6 +14,8 @@
  *    respaldar, se marca como sin confirmar y no se presenta como hecho.
  */
 
+import { reserveProvider } from './admission.ts'
+
 const LINKUP_URL = 'https://api.linkup.so/v1/search'
 const RECENCY_MONTHS = 12
 
@@ -37,6 +39,7 @@ const responseSchemaGuard = (body: unknown): body is { answer?: unknown; sources
 export async function research(question: string, opts?: { depth?: 'flash' | 'fast' | 'standard' | 'deep' }): Promise<ResearchAnswer> {
   const apiKey = process.env.LINKUP_API_KEY?.trim()
   if (!apiKey) throw new Error('LINKUP_API_KEY no está configurada.')
+  await reserveProvider('linkup')
 
   let response: Response
   try {

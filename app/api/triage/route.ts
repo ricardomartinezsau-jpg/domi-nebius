@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { requireGuest, mutationBody, ipBucket } from '@/lib/guest'
+import { admitTriage, LIMITS } from '@/lib/admission'
+import { PolicyError, failureResponse, logFailure, withContext, requestId } from '@/lib/operations'
 import { quickSchema, runQuickTriage, runDetailTriage, type TriageContext } from '@/lib/triage'
 import {
   SAFE_SOMATIC_HOOK,
@@ -65,7 +68,9 @@ async function repairOnce<T>(
     if (failures(candidateRules).length < failures(rules).length) {
       return { output: candidate, rules: candidateRules, repaired: true }
     }
-  } catch {
+  } catch (error) {
+    logFailure('triage.repair', error)
+    if (error instanceof PolicyError) throw error
     // La reparación es un extra: si falla, se responde con lo que ya se tenía.
   }
   return { output: null, rules, repaired: false }
@@ -123,29 +128,26 @@ async function detailPhase(ctx: TriageContext, quick: z.infer<typeof quickSchema
 }
 
 export async function POST(request: Request) {
-  let body: unknown
+  return withContext({ requestId: requestId() }, async () => {
   try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'El cuerpo de la solicitud no es JSON válido.' }, { status: 400 })
-  }
-
+  const body = await mutationBody(request, LIMITS.triageBytes)
+  const owner = requireGuest(request)
   const parsed = requestSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Solicitud inválida.' }, { status: 400 })
   }
+  if (parsed.data.phase === 'detail' && parsed.data.quick.momentumMode.activationHook.length > 1000) throw new PolicyError(400, 'HOOK_TOO_LONG')
+  await admitTriage(owner, ipBucket(request))
 
   const today = new Date().toISOString().slice(0, 10)
   const ctx: TriageContext = { rawDump: parsed.data.rawDump, today, locale: parsed.data.locale }
 
-  try {
-    const result = parsed.data.phase === 'quick' ? await quickPhase(ctx) : await detailPhase(ctx, parsed.data.quick)
-    return NextResponse.json(result)
-  } catch {
-    // El detalle del fallo (SDK, red, contenido del modelo) no sale de este proceso.
-    return NextResponse.json(
-      { error: 'No se pudo procesar el vaciado en este momento. Intenta de nuevo en unos segundos.' },
-      { status: 502 },
-    )
+    const data = parsed.data
+    const result = await withContext({ phase: data.phase }, () => data.phase === 'quick' ? quickPhase(ctx) : detailPhase(ctx, data.quick))
+    return NextResponse.json({ ...result, requestId: requestId() }, { headers: { 'Cache-Control': 'no-store' } })
+  } catch (error) {
+    logFailure('triage.request', error)
+    return failureResponse(error, 502)
   }
+  })
 }

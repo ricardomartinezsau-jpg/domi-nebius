@@ -1,4 +1,5 @@
-import { Pool } from 'pg'
+import { Pool, type PoolClient } from 'pg'
+import { logFailure } from './operations.ts'
 
 let pool: Pool | undefined
 
@@ -20,6 +21,23 @@ export function db(): Pool {
     })
   }
   return pool
+}
+
+export type SqlClient = Pick<PoolClient, 'query'>
+
+/** Short DB-only unit of work. A failed rollback must not hide the primary failure. */
+export async function transaction<T>(work: (client: SqlClient) => Promise<T>): Promise<T> {
+  const client = await db().connect()
+  let broken = false
+  try {
+    await client.query('BEGIN')
+    const result = await work(client)
+    await client.query('COMMIT')
+    return result
+  } catch (error) {
+    try { await client.query('ROLLBACK') } catch (secondary) { broken = true; logFailure('db.rollback', secondary) }
+    throw error
+  } finally { client.release(broken) }
 }
 
 export async function query<T extends Record<string, unknown>>(

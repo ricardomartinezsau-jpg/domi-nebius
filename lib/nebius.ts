@@ -1,6 +1,7 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { generateText, Output } from 'ai'
 import type { z } from 'zod'
+import { reserveProvider } from './admission.ts'
 
 // Endpoint fijo a propósito: este producto existe para demostrar Nebius Token
 // Factory, no para elegir el mejor proveedor disponible.
@@ -89,6 +90,7 @@ export async function generateStructured<T extends z.ZodTypeAny>(args: {
 }): Promise<StructuredResult<z.infer<T>>> {
   const modelId = args.modelId ?? DEFAULT_MODEL
   const model = resolveModel(modelId)
+  await reserveProvider('nebius')
   const started = performance.now()
 
   try {
