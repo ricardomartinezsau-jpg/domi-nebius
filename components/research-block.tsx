@@ -1,14 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { AlertCircle, ExternalLink, RotateCw, Search, ShieldCheck } from 'lucide-react'
-import type { ResearchView } from '@/lib/research'
+import { useResearch } from './use-research'
 
 const STEP_LABELS: Record<string, string> = {
   'question-1': '1. Formular pregunta',
   'search-1': '2. Búsqueda web',
   'gap': '3. Detectar lagunas',
-  'search-2': '4. Búsqueda profunda',
+  'search-2': '4. Búsqueda de seguimiento',
   'guide': '5. Guía respaldada',
 }
 
@@ -24,30 +23,13 @@ function getDomain(urlStr: string): string {
 }
 
 export function ResearchBlock({ runId }: { runId: string }) {
-  const [view, setView] = useState<ResearchView | null>(null)
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout
-    const poll = async () => {
-      try {
-        const res = await fetch(`/api/research?runId=${runId}`)
-        if (res.ok) {
-          const data = await res.json()
-          setView(data)
-          if (data.status === 'done' || data.status === 'failed') return
-        }
-      } catch {}
-      timer = setTimeout(poll, 2500)
-    }
-    poll()
-    return () => clearTimeout(timer)
-  }, [runId])
+  const { view, error } = useResearch(runId)
 
   if (!view) {
     return (
       <div className="research-block is-loading-init" role="status">
         <div className="research-init-spinner" aria-hidden="true" />
-        <span>Conectando con el motor de investigación de Domi…</span>
+        <span>{error || 'Consultando tu investigación…'}</span>
       </div>
     )
   }
@@ -62,15 +44,16 @@ export function ResearchBlock({ runId }: { runId: string }) {
 
   return (
     <section className="research-block" aria-label="Investigación de apoyo">
+      {error && <p role="status">{error} El resultado anterior se conserva.</p>}
       {/* Cabecera del bloque */}
       <header className="research-header">
         <div className="research-title-group">
           <Search size={17} className="research-icon" />
-          <h3 className="research-title">Investigación profunda de apoyo</h3>
+          <h2 className="research-title">Fuentes y guía</h2>
         </div>
         <span className={`research-status-badge status-${view.status}`}>
-          {isWorking && 'Investigando (1–3 min)'}
-          {isDone && 'Completada'}
+          {isWorking && 'Investigando fuentes…'}
+          {isDone && 'Listo para revisión'}
           {isFailed && 'Pausada por error'}
         </span>
       </header>
@@ -80,22 +63,22 @@ export function ResearchBlock({ runId }: { runId: string }) {
         <div className="research-recovery-box" role="status">
           <div className="recovery-badge-row">
             <RotateCw size={14} className="recovery-spin" />
-            <span className="recovery-tag">Render Workflows · Resiliencia Activa</span>
+            <span className="recovery-tag">Retomando un paso</span>
           </div>
           <strong>
             Paso «{STEP_LABELS[recoveringStep.step] || recoveringStep.step}» en auto-recuperación (Intento {recoveringStep.attempt})
           </strong>
           <p>
-            Un intento previo tuvo un corte o demora. El workflow se reanuda de forma segura desde este punto sin duplicar búsquedas ni perder el avance previo.
+            Un intento previo tuvo un corte o demora. Los pasos ya guardados se conservan.
           </p>
         </div>
       )}
 
-      {/* ESTADO 1: ESPERANDO (Proceso asíncrono largo de 1 a 3 minutos) */}
+      {/* El tiempo observado no es una promesa de duración para todas las consultas. */}
       {isWorking && (
         <div className="research-waiting-panel" role="status">
           <p className="waiting-advice">
-            Esta investigación toma entre 1 y 3 minutos en segundo plano. Puedes regresar a tus bandejas o continuar con otra tarea; tu avance se guarda y te esperará aquí.
+            Puedes volver a tus bandejas o bloquear el teléfono. La investigación sigue por su cuenta; al volver consultaremos el resultado guardado.
           </p>
 
           {/* Línea de etapas de Render Workflows */}
@@ -150,7 +133,7 @@ export function ResearchBlock({ runId }: { runId: string }) {
                     {/* ESTADO 3: CON FUENTES CITADAS Y ENLACES */}
                     {step.sourceUrls && step.sourceUrls.length > 0 && (
                       <div className="step-citations">
-                        <span className="citations-label">Fuentes verificadas:</span>
+                        <span className="citations-label">Fuentes citadas:</span>
                         <div className="citations-pills">
                           {step.sourceUrls.map((url, uIdx) => {
                             const foundSource = view.sources.find(s => s.url === url)
@@ -166,11 +149,6 @@ export function ResearchBlock({ runId }: { runId: string }) {
                                 title={url}
                               >
                                 <span>{label}</span>
-                                {foundSource?.confidence && (
-                                  <span className={`confidence-tag conf-${foundSource.confidence}`}>
-                                    {foundSource.confidence}
-                                  </span>
-                                )}
                                 <ExternalLink size={12} />
                               </a>
                             )
@@ -201,7 +179,7 @@ export function ResearchBlock({ runId }: { runId: string }) {
               </ul>
               {view.guide.disagreement && (
                 <div className="disagreement-box">
-                  <strong>Contradicción detectada entre fuentes:</strong>
+                  <strong>Esto no me cuadra (contradicción detectada entre fuentes):</strong>
                   <p>{view.guide.disagreement}</p>
                 </div>
               )}
@@ -221,7 +199,7 @@ export function ResearchBlock({ runId }: { runId: string }) {
                     <a href={src.url} target="_blank" rel="noreferrer">
                       {src.name || getDomain(src.url)}
                     </a>
-                    <span className="source-meta">({src.confidence} confianza · Ronda {src.round})</span>
+                    <span className="source-meta">Consulta {src.round}</span>
                   </li>
                 ))}
               </ul>

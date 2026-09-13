@@ -95,3 +95,27 @@ test('ambiguous titles do not invent a relation; broken stored references are re
   assert.equal(restoreSession('{broken'), null)
   assert.equal(restoreSession(JSON.stringify({ ...s, selectedTaskId: 'missing' })), null)
 })
+
+test('research is session-owned, remains version 1 and survives moving/finishing its task', () => {
+  const id='29ff3b1c-7483-4cbf-9a5b-3ef87be7fb9a'
+  let s=begin()
+  assert.ok(restoreSession(JSON.stringify(s)), 'old v1 without research still loads')
+  s=reduce(s,{type:'research',taskId:s.selectedTaskId,runId:id})
+  assert.equal(s.tasks[0].researchRunId,undefined)
+  const reference=s.research
+  s=reduce(s,{type:'move',taskId:s.selectedTaskId,tray:'socialComunitaria'})
+  s=reduce(start(s),{type:'finish',now:5000})
+  s=reduce(s,{type:'screen',screen:'research',now:6000})
+  const restored=restoreSession(JSON.stringify(s))
+  assert.equal(restored.version,1)
+  assert.equal(restored.screen,'research')
+  assert.deepEqual(restored.research,reference)
+  assert.equal(restored.research.runId,id)
+})
+
+test('legacy task research is promoted to session and a missing research screen has a safe return', () => {
+  const s=begin()
+  s.tasks[0].researchRunId='29ff3b1c-7483-4cbf-9a5b-3ef87be7fb9a'
+  assert.equal(restoreSession(JSON.stringify(s)).research.runId,s.tasks[0].researchRunId)
+  assert.equal(restoreSession(JSON.stringify({...begin(),screen:'research'})).screen,'trays')
+})

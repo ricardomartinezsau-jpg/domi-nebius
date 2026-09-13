@@ -29,10 +29,11 @@ const runSchema = z.object({
   outcome: z.enum(['open', 'completed', 'stopped', 'reset']),
 })
 const sessionSchema = z.object({
-  version: z.literal(1), draft: z.string(), screen: z.enum(['capture', 'trays', 'dominio']),
+  version: z.literal(1), draft: z.string(), screen: z.enum(['capture', 'trays', 'dominio', 'research']),
   tasks: z.array(taskSchema), dumps: z.array(dumpSchema), runs: z.array(runSchema),
   selectedTaskId: z.string().nullable(), activeRunId: z.string().nullable(),
   selectionByUser: z.boolean(), clockVisible: z.boolean(), updatedAt: timestamp,
+  research: z.object({ runId: z.string().uuid(), tray: traySchema, title: z.string() }).optional(),
 })
 export type DomiTask = z.infer<typeof taskSchema>
 export type FocusRun = z.infer<typeof runSchema>
@@ -86,8 +87,15 @@ export function restoreSession(serialized: string): DomiSession | null {
     if (session.selectedTaskId && !ids.has(session.selectedTaskId)) return null
     if (session.activeRunId && !session.runs.some(run => run.id === session.activeRunId && run.taskId === session.selectedTaskId)) return null
     if (session.screen === 'dominio' && !session.activeRunId) return null
+    // Compatibility with sessions that used to keep the research id on a task.
+    const legacy = session.tasks.find(task => task.id === session.selectedTaskId && task.researchRunId)
+      ?? [...session.tasks].reverse().find(task => task.researchRunId)
+    const research = session.research ?? (legacy && z.string().uuid().safeParse(legacy.researchRunId).success
+      ? { runId: legacy.researchRunId!, tray: legacy.tray, title: legacy.title } : undefined)
     return {
       ...session,
+      research,
+      screen: session.screen === 'research' && !research ? 'trays' : session.screen,
       runs: session.runs.map(run => run.activeSince === null ? run : pauseRun(run, Math.max(run.activeSince, run.checkpointAt))),
       dumps: session.dumps.map(dump => dump.detailStatus === 'pending' ? { ...dump, detailStatus: 'failed' } : dump),
     }
@@ -106,7 +114,7 @@ export type SessionAction =
   | { type: 'start'; taskId: string; runId: string; now: number }
   | { type: 'pause' | 'resume' | 'checkpoint' | 'leave' | 'stop' | 'finish'; now: number }
   | { type: 'resetClock'; runId: string; now: number }
-  | { type: 'screen'; screen: 'capture' | 'trays'; now: number }
+  | { type: 'screen'; screen: 'capture' | 'trays' | 'research'; now: number }
   | { type: 'clockVisible' }
 
 export function sessionReducer(session: DomiSession, action: SessionAction): DomiSession {
@@ -151,7 +159,11 @@ export function sessionReducer(session: DomiSession, action: SessionAction): Dom
     case 'choose': return session.tasks.some(task => task.id === action.taskId && !task.done) ? { ...session, selectedTaskId: action.taskId, selectionByUser: true } : session
     case 'move': return { ...session, tasks: session.tasks.map(task => task.id === action.taskId ? { ...task, tray: action.tray } : task) }
     case 'step': return { ...session, tasks: session.tasks.map(task => task.id === action.taskId && !task.done ? { ...task, steps: task.steps.map(step => step.id === action.stepId ? { ...step, done: !step.done } : step) } : task) }
-    case 'research': return { ...session, tasks: session.tasks.map(task => task.id === action.taskId ? { ...task, researchRunId: action.runId } : task) }
+    case 'research': {
+      const task = session.tasks.find(task => task.id === action.taskId)
+      if (!task || !z.string().uuid().safeParse(action.runId).success) return session
+      return { ...session, research: { runId: action.runId, tray: task.tray, title: task.title } }
+    }
     case 'start': {
       if (!session.tasks.some(task => task.id === action.taskId && !task.done)) return session
       const oldRuns = session.runs.map(run => run.activeSince === null ? run : pauseRun(run, action.now))
@@ -170,6 +182,7 @@ export function sessionReducer(session: DomiSession, action: SessionAction): Dom
     case 'resetClock': {
       const current = activeRun(session)
       if (action.type === 'screen' || action.type === 'leave') {
+        if (action.type === 'screen' && action.screen === 'research' && !session.research) return session
         return { ...session, screen: action.type === 'screen' ? action.screen : 'trays', activeRunId: null, runs: session.runs.map(run => run.activeSince === null ? run : pauseRun(run, action.now)), updatedAt: action.now }
       }
       if (!current || current.outcome !== 'open') return session

@@ -54,13 +54,11 @@ No se exige que la primera pantalla resuelva de antemano todos los detalles del 
 **Orden de las pantallas:**
 
 1. **Foco:** entender y elegir el primer movimiento.
-2. **Momentum:** hacer ese movimiento, ajustar el tamaño y resolver un bloqueo. La
-   investigación, sus fuentes y su progreso viven aquí como estados o paneles secundarios.
-3. **Tareas:** listado simple, marcar hecho y mover de bandeja.
+2. **Momentum:** hacer ese movimiento, ajustar el tamaño y resolver un bloqueo. Desde aquí se PIDE la investigación, pero la investigación sale de Momentum y tiene ventana propia.
+3. **Tareas:** listado simple, marcar hecho y mover de bandeja. Estando en una bandeja se puede pedir investigar por área.
 4. **Plan:** secuencia simple con su razón y, cuando corresponda, el efecto de los hallazgos.
 
-El vaciado existente se conserva. No se añade una pantalla de investigación ni un dashboard
-de operaciones sólo para exhibir patrocinadores.
+El vaciado existente se conserva. Se añade una pantalla de investigación propia (decisión de Ricardo el 12 de septiembre) para que la persona pueda consultar las fuentes y la guía a su ritmo, sin sobrecargar la vista principal. No se añade un dashboard de operaciones sólo para exhibir patrocinadores.
 
 **Después de revisar las pantallas, refinamiento global:**
 

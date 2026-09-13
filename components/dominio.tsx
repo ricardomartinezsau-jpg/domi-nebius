@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Check, Pause, Play, RotateCcw } from 'lucide-react'
 import { activeRun, elapsedMs, type DomiSession, type SessionAction } from '@/lib/session'
 import { Brand } from './brand'
-import { ResearchBlock } from './research-block'
 
 type Props = { session: DomiSession; dispatch: (action: SessionAction) => void; retryDetail: (dumpId: string) => void }
 export function Dominio({ session, dispatch, retryDetail }: Props) {
@@ -14,25 +13,33 @@ export function Dominio({ session, dispatch, retryDetail }: Props) {
   const [researching, setResearching] = useState(false)
   const [blocker, setBlocker] = useState('')
   const [submittingBlocker, setSubmittingBlocker] = useState(false)
+  const [researchError, setResearchError] = useState<string | null>(null)
+  const submitting = useRef(false)
   
   const heading = useRef<HTMLHeadingElement>(null)
   
   const handleResearch = async () => {
-    if (!task || !blocker.trim()) return
+    if (!task || !blocker.trim() || submitting.current) return
+    submitting.current = true
     setSubmittingBlocker(true)
+    setResearchError(null)
     try {
       const res = await fetch('/api/research', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ taskTitle: task.title, blocker })
       })
-      if (res.ok) {
-        const { runId } = await res.json()
+      const data = await res.json()
+      if (res.status === 202 && typeof data.runId === 'string') {
+        const { runId } = data
         dispatch({ type: 'research', taskId: task.id, runId })
         setResearching(false)
         setBlocker('')
-      }
+      } else setResearchError(data.error || 'No se pudo abrir la investigación.')
+    } catch {
+      setResearchError('No se pudo confirmar el envío. No se ha repetido la petición.')
     } finally {
+      submitting.current = false
       setSubmittingBlocker(false)
     }
   }
@@ -87,12 +94,14 @@ export function Dominio({ session, dispatch, retryDetail }: Props) {
           <div className="dominio-actions">{pending ? <button className="primary" onClick={() => dispatch({ type: 'step', taskId: task.id, stepId: pending.id })}><Check size={18} />Completé esta acción</button> : <button className="primary" onClick={() => act('finish')}><Check size={18} />Terminé esta tarea</button>}<button className="quiet" onClick={() => act('stop')}>Parar por hoy</button></div>
           {pending && <button className="quiet finish-whole" onClick={() => act('finish')}>Ya terminé la tarea completa</button>}
 
-          {task.researchRunId ? (
-            <ResearchBlock runId={task.researchRunId} />
+          {session.research && !researching ? (
+            <div className="research-request-link"><button className="quiet" onClick={() => dispatch({ type: 'screen', screen: 'research', now: Date.now() })}>Abrir investigación guardada</button><button className="quiet" onClick={() => setResearching(true)}>Pedir otra investigación</button></div>
           ) : researching ? (
             <div style={{ marginTop: 24, padding: '20px 24px', background: '#090e1a', borderRadius: 16, border: '1px solid #335cff4d' }}>
-              <label style={{ display: 'block', color: '#a6bce9', marginBottom: 12, fontWeight: 500 }}>¿Qué te frena?</label>
+              <label htmlFor="research-blocker" style={{ display: 'block', color: '#a6bce9', marginBottom: 12, fontWeight: 500 }}>¿Qué te frena?</label>
               <textarea
+                id="research-blocker"
+                maxLength={1000}
                 autoFocus
                 disabled={submittingBlocker}
                 value={blocker}
@@ -100,12 +109,14 @@ export function Dominio({ session, dispatch, retryDetail }: Props) {
                 placeholder="Describe qué necesitas saber o qué te impide avanzar..."
                 style={{ width: '100%', minHeight: 80, padding: 12, borderRadius: 8, background: '#0a101d', border: '1px solid #ffffff14', color: '#f5f5ef', marginBottom: 16, resize: 'vertical', fontFamily: 'inherit' }}
               />
+              {session.research && <p className="meta">La nueva consulta sustituirá el acceso a la investigación anterior en tus bandejas.</p>}
               <div style={{ display: 'flex', gap: 12 }}>
-                <button className="primary" disabled={!blocker.trim() || submittingBlocker} onClick={handleResearch}>
+                <button className="quiet" disabled={!blocker.trim() || submittingBlocker} onClick={handleResearch}>
                   {submittingBlocker ? 'Iniciando...' : 'Pedir investigación'}
                 </button>
-                <button className="quiet" onClick={() => setResearching(false)}>Cancelar</button>
+                <button className="quiet" disabled={submittingBlocker} onClick={() => setResearching(false)}>Cancelar</button>
               </div>
+              {researchError && <p role="alert">{researchError}</p>}
             </div>
           ) : (
             <div style={{ marginTop: 24, textAlign: 'center' }}>

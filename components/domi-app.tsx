@@ -6,6 +6,7 @@ import { Capture } from './capture'
 import { Trays } from './trays'
 import { Dominio } from './dominio'
 import { useSession } from './use-session'
+import { ResearchWindow } from './research-window'
 
 export function DomiApp() {
   const { session, dispatch, ready, storageError } = useSession()
@@ -44,5 +45,6 @@ export function DomiApp() {
     {session.screen === 'capture' && <Capture initialText={session.draft} onDraft={onDraft} onResult={onQuick} hasTasks={session.tasks.length > 0} onBack={() => dispatch({ type: 'screen', screen: 'trays', now: Date.now() })} />}
     {session.screen === 'trays' && <Trays session={session} dispatch={dispatch} retryDetail={retryDetail} />}
     {session.screen === 'dominio' && <Dominio session={session} dispatch={dispatch} retryDetail={retryDetail} />}
+    {session.screen === 'research' && session.research && <ResearchWindow research={session.research} dispatch={dispatch} />}
   </>
 }

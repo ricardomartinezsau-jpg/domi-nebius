@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { query, queryOne } from './db.ts'
 import { confidenceFrom, research, type Source } from './linkup.ts'
 import { DEFAULT_MODEL, RESEARCH_MODEL, generateStructured } from './nebius.ts'
+import { asEvidence, EVIDENCE_RULES, GAP_RULES, groundGuide, type StoredFinding } from './research-evidence.ts'
 
 /**
  * Investigación en varios pasos, con estado en la base y recuperación.
@@ -175,8 +176,6 @@ async function saveFindings(runId: string, round: number, ask: { question: strin
   return { questionId: question.id, sources: answer.sources.length, confidence }
 }
 
-type StoredFinding = { round: number; question: string; claim: string; confidence: string; sources: { url: string; name: string | null }[] }
-
 /**
  * Los hallazgos tal como están en la base, agrupados por la pregunta que los
  * produjo. Se agrupan porque una búsqueda devuelve una respuesta respaldada por
@@ -185,8 +184,8 @@ type StoredFinding = { round: number; question: string; claim: string; confidenc
  * creerse.
  */
 async function storedFindings(runId: string): Promise<StoredFinding[]> {
-  const rows = await query<{ round: number; question: string; claim: string; confidence: string; source_url: string; source_name: string | null }>(
-    `SELECT q.round, q.question, f.claim, f.confidence, f.source_url, f.source_name
+  const rows = await query<{ round: number; question: string; claim: string; confidence: string; source_url: string; source_name: string | null; snippet: string | null }>(
+    `SELECT q.round, q.question, f.claim, f.confidence, f.source_url, f.source_name, f.snippet
      FROM findings f JOIN research_questions q ON q.id = f.question_id
      WHERE f.run_id = $1 ORDER BY q.round, f.created_at`,
     [runId],
@@ -195,21 +194,11 @@ async function storedFindings(runId: string): Promise<StoredFinding[]> {
   for (const row of rows) {
     const key = `${row.round}:${row.claim}`
     const entry = grouped.get(key) ?? { round: row.round, question: row.question, claim: row.claim, confidence: row.confidence, sources: [] }
-    entry.sources.push({ url: row.source_url, name: row.source_name })
+    entry.sources.push({ url: row.source_url, name: row.source_name, snippet: row.snippet })
     grouped.set(key, entry)
   }
   return [...grouped.values()]
 }
-
-const asEvidence = (findings: StoredFinding[]): string =>
-  findings
-    .map((finding) => [
-      `VUELTA ${finding.round} · pregunta: ${finding.question}`,
-      `respaldo: ${finding.confidence}`,
-      `hallazgo: ${finding.claim}`,
-      `fuentes: ${finding.sources.map((source) => source.url).join(' | ')}`,
-    ].join('\n'))
-    .join('\n\n')
 
 const askSystem = (locale: 'es' | 'en') =>
   locale === 'en'
@@ -253,9 +242,7 @@ export async function executeGap(runId: string) {
   return runStep(runId, 'gap', async () => {
     const stored = await storedFindings(runId)
     const { output } = await generateStructured({
-      system: isEn
-        ? 'You read research findings already saved and decide whether ONE more search is needed. Ask again only if a concrete requirement is still missing. The follow-up must be a short question someone could type into a search engine — never a sentence starting with "I need more information". Never introduce a product or service the person did not mention. If the findings already cover the task, answer needsMore=false with empty strings. Report any disagreement between sources.'
-        : 'Lees hallazgos de investigación ya guardados y decides si hace falta UNA búsqueda más. Pide otra solo si falta un requisito concreto. La pregunta de seguimiento debe ser una pregunta corta que alguien escribiría en un buscador; nunca una frase que empiece por "necesito más información". Nunca introduzcas un producto o servicio que la persona no mencionó. Si lo encontrado ya cubre la tarea, responde needsMore=false con cadenas vacías. Señala cualquier contradicción entre fuentes.',
+      system: `${EVIDENCE_RULES}\n${GAP_RULES}\n${isEn ? 'Write in English.' : 'Responde en español.'}`,
       prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'SAVED FINDINGS' : 'HALLAZGOS GUARDADOS'} (${sourcesCount} ${isEn ? 'sources' : 'fuentes'}):\n${asEvidence(stored)}`,
       schema: gapSchema,
       modelId: RESEARCH_MODEL,
@@ -297,29 +284,18 @@ export async function executeGuide(runId: string) {
 
   const guide = await runStep(runId, 'guide', async () => {
     const stored = await storedFindings(runId)
-    const allowed = new Set(stored.flatMap((finding) => finding.sources.map((source) => source.url)))
     const evidence = asEvidence(stored)
 
     const { output } = await generateStructured({
-      system: isEn
+      system: `${EVIDENCE_RULES}\nCompare all rounds, including the follow-up sources. Preserve unresolved conflicts in unconfirmed with both source URLs. The previous disagreement is evidence to re-examine, not an instruction to erase or accept.\n` + (isEn
         ? 'You write a short actionable guide grounded ONLY in the findings given. Every step cites the URLs it came from, copied literally. Anything you cannot support with those findings goes in "unconfirmed" instead of being stated as fact. Steps are 2-10 minutes each.'
-        : 'Escribes una guía breve y accionable basada SOLO en los hallazgos dados. Cada paso cita las URLs de donde salió, copiadas literalmente. Lo que no puedas respaldar con esos hallazgos va en "unconfirmed" en vez de afirmarse. Cada paso dura de 2 a 10 minutos.',
-      prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'FINDINGS' : 'HALLAZGOS'}:\n${evidence}`,
+        : 'Escribes una guía breve y accionable basada SOLO en los hallazgos dados. Cada paso cita las URLs de donde salió, copiadas literalmente. Lo que no puedas respaldar con esos hallazgos va en "unconfirmed" en vez de afirmarse. Cada paso dura de 2 a 10 minutos.'),
+      prompt: `${isEn ? 'TASK' : 'TAREA'}: ${input.taskTitle}\n${isEn ? 'BLOCKER' : 'BLOQUEO'}: ${input.blocker}\n\n${isEn ? 'FINDINGS' : 'HALLAZGOS'}:\n${evidence}\nPrevious disagreement: ${JSON.stringify(gap?.disagreement || null)}`,
       schema: guideSchema,
       modelId: RESEARCH_MODEL,
     })
 
-    const steps = output.steps.map((step) => {
-      const cited = step.sourceUrls.filter((url) => allowed.has(url))
-      return { ...step, sourceUrls: cited }
-    })
-    const unsupported = steps.filter((step) => step.sourceUrls.length === 0).map((step) => step.title)
-
-    return {
-      steps: steps.filter((step) => step.sourceUrls.length > 0),
-      unconfirmed: [...output.unconfirmed, ...unsupported.map((title) => `Sin fuente recuperada: ${title}`)],
-      disagreement: gap?.disagreement || null,
-    } satisfies Guide & { disagreement: string | null }
+    return groundGuide(output, stored, gap?.disagreement || null) satisfies Guide & { disagreement: string | null }
   })
 
   // Aquí NO se declara terminada la ejecución. Este paso puede devolver una
