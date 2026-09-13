@@ -15,6 +15,7 @@
  */
 
 import { reserveProvider } from './admission.ts'
+import { logFailure } from './operations.ts'
 
 const LINKUP_URL = 'https://api.linkup.so/v1/search'
 const RECENCY_MONTHS = 12
@@ -55,7 +56,8 @@ export async function research(question: string, opts?: { depth?: 'flash' | 'fas
       }),
       signal: AbortSignal.timeout(45_000),
     })
-  } catch {
+  } catch (error) {
+    logFailure('linkup.search', error)
     throw new Error('Búsqueda: no hubo respuesta a tiempo.')
   }
 

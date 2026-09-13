@@ -15,10 +15,13 @@ export function db(): Pool {
       max: 5,
       connectionTimeoutMillis: 10_000,
       idleTimeoutMillis: 30_000,
+      statement_timeout: 10_000,
+      lock_timeout: 3_000,
       // En Render, la app y la base viven en la misma red privada: no hace
       // falta TLS. Fuera de ahí se activa con DATABASE_SSL=require.
       ssl: process.env.DATABASE_SSL === 'require' ? { rejectUnauthorized: false } : undefined,
     })
+    pool.on('error', error => logFailure('db.idle_connection', error))
   }
   return pool
 }

@@ -2,6 +2,7 @@ import { createOpenAI } from '@ai-sdk/openai'
 import { generateText, Output } from 'ai'
 import type { z } from 'zod'
 import { reserveProvider } from './admission.ts'
+import { logFailure, withContext } from './operations.ts'
 
 // Endpoint fijo a propósito: este producto existe para demostrar Nebius Token
 // Factory, no para elegir el mejor proveedor disponible.
@@ -117,9 +118,7 @@ export async function generateStructured<T extends z.ZodTypeAny>(args: {
     // así que no sale de aquí. Lo que sí sale es de qué tipo fue el fallo y con
     // qué código HTTP: sin eso, un error en producción es indistinguible de
     // otro y no hay forma de arreglarlo.
-    const kind = error instanceof Error ? error.name : typeof error
-    const status = (error as { statusCode?: number; status?: number })?.statusCode ?? (error as { status?: number })?.status
-    console.error(`[nebius] ${modelId} falló tras ${Math.round(performance.now() - started)} ms · ${kind}${status ? ` · HTTP ${status}` : ''}`)
+    withContext({ model: modelId }, () => logFailure('nebius.generate', error, Math.round(performance.now() - started)))
     throw new Error('No se pudo completar la respuesta estructurada de Nebius.')
   }
 }

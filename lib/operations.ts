@@ -14,7 +14,7 @@ export class PolicyError extends Error {
   }
 }
 
-type Context = { requestId?: string; runId?: string; generation?: number; step?: string; attempt?: number; phase?: string }
+type Context = { requestId?: string; runId?: string; generation?: number; step?: string; attempt?: number; phase?: string; repair?: boolean; model?: string }
 const context = new AsyncLocalStorage<Context>()
 export function withContext<T>(fields: Context, work: () => T): T {
   return context.run({ ...context.getStore(), ...fields }, work)
@@ -27,7 +27,12 @@ export function logFailure(operation: string, error: unknown, durationMs?: numbe
   const names = ['Error', 'TypeError', 'SyntaxError', 'AbortError', 'TimeoutError', 'PolicyError', 'StepBusyError', 'StaleExecutionError']
   const code = typeof e?.code === 'string' && /^[0-9A-Z]{5}$/.test(e.code) ? e.code : undefined
   const status = e?.statusCode ?? e?.status
-  console.error(JSON.stringify({ event: operation, ...context.getStore(), kind: names.includes(String(e?.name)) ? e?.name : 'ExternalError', sqlstate: code, status: typeof status === 'number' ? status : undefined, durationMs }))
+  const policyCodes = ['QUOTA_EXHAUSTED', 'BUDGET_UNAVAILABLE', 'ADMISSION_CLOSED', 'GUEST_CONFIGURATION', 'ORIGIN_CONFIGURATION',
+    'NOT_FOUND', 'IDEMPOTENCY_CONFLICT', 'ACTIVE_RESEARCH_LIMIT', 'ATTEMPTS_EXHAUSTED', 'INCOMPLETE_ROUND', 'UNGROUNDED_GUIDE',
+    'WORKFLOW_NOT_CONFIGURED', 'INCOMPLETE_STEPS', 'EXECUTION_VERSION_REQUIRED', 'EXECUTION_CONTEXT_REQUIRED']
+  console.error(JSON.stringify({ event: operation, ...context.getStore(), kind: names.includes(String(e?.name)) ? e?.name : 'ExternalError',
+    code: error instanceof PolicyError && policyCodes.includes(error.code) ? error.code : undefined,
+    sqlstate: code, status: typeof status === 'number' ? status : undefined, durationMs }))
 }
 
 export function failureResponse(error: unknown, fallback = 503): Response {

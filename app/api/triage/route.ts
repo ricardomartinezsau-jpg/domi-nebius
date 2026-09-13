@@ -63,7 +63,7 @@ async function repairOnce<T>(
 ): Promise<{ output: T | null; rules: Rule[]; repaired: boolean }> {
   if (!failures(rules).some((rule) => rule.repairable)) return { output: null, rules, repaired: false }
   try {
-    const candidate = await rerun(repairInstruction(rules))
+    const candidate = await withContext({ repair: true }, () => rerun(repairInstruction(rules)))
     const candidateRules = check(candidate)
     if (failures(candidateRules).length < failures(rules).length) {
       return { output: candidate, rules: candidateRules, repaired: true }
