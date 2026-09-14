@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { generateStructured } from './nebius'
+import { generateStructured, RESEARCH_MODEL } from './nebius'
 
 /**
  * El contrato está partido en dos a propósito, y la razón es medida, no
@@ -184,6 +184,6 @@ export async function runDetailTriage(ctx: TriageContext, quick: QuickOutput, op
     system: isEn ? DETAIL_EN : DETAIL_ES,
     prompt: userPrompt(ctx, isEn) + decided + repairBlock(opts.repair),
     schema: detailSchema,
-    modelId: opts.modelId,
+    modelId: opts.modelId ?? RESEARCH_MODEL,
   })
 }
