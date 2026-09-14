@@ -5,17 +5,21 @@ import { PolicyError, requestId } from './operations.ts'
 import { RESEARCH_MODEL } from './nebius.ts'
 import type { ResearchInput } from './research.ts'
 
-export function inputHash(input: ResearchInput) {
+export type CreateResearchOptions = { demoFault?: boolean }
+
+export function inputHash(input: ResearchInput, options: CreateResearchOptions = {}) {
   return createHash('sha256').update(JSON.stringify({ taskTitle: input.taskTitle?.trim() || null,
-    contextArea: input.contextArea ?? null, blocker: input.blocker.trim(), locale: input.locale })).digest('hex')
+    contextArea: input.contextArea ?? null, blocker: input.blocker.trim(), locale: input.locale,
+    // Keep an operator-selected demo run distinct from an ordinary idempotent request.
+    demoFault: options.demoFault === true })).digest('hex')
 }
 export async function lockOwner(client: SqlClient, owner: string) {
   await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`domi:owner:${owner}`])
 }
-export async function createResearchRun(input: ResearchInput, owner: string, key: string, ip: string): Promise<string> {
+export async function createResearchRun(input: ResearchInput, owner: string, key: string, ip: string, options: CreateResearchOptions = {}): Promise<string> {
   assertAdmission()
   if (!owner || !/^[A-Za-z0-9_-]{16,128}$/.test(key)) throw new PolicyError(400, 'IDEMPOTENCY_KEY_REQUIRED')
-  const hash = inputHash(input)
+  const hash = inputHash(input, options)
   return transaction(async client => {
     await lockOwner(client, owner)
     const previous = (await client.query('SELECT id, request_hash FROM runs WHERE guest_owner = $1 AND idempotency_key = $2', [owner, key])).rows[0]
@@ -30,7 +34,7 @@ export async function createResearchRun(input: ResearchInput, owner: string, key
     const row = (await client.query(`INSERT INTO runs
       (anonymous, model, status, current_step, steps, guest_owner, idempotency_key, request_hash, correlation_id)
       VALUES (true, $1, 'queued', 'question-1', $2::jsonb, $3, $4, $5, $6) RETURNING id`,
-    [RESEARCH_MODEL, JSON.stringify([{ input }]), owner, key, hash, requestId()])).rows[0]
+    [RESEARCH_MODEL, JSON.stringify([{ input, ...(options.demoFault === true ? { demoFault: true } : {}) }]), owner, key, hash, requestId()])).rows[0]
     return row.id as string
   })
 }

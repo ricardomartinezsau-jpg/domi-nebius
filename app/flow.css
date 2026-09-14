@@ -201,6 +201,20 @@ kbd { padding:2px 5px; border:1px solid #252a341f; border-radius:4px; font:inher
 .research-active-questions li { margin:4px 0; }
 .research-active-questions small { color:#8ea2c6; }
 
+.research-lineage { margin:0 0 22px; padding:16px; background:#0f172a; border:1px solid #ffffff0f; border-radius:12px; }
+.research-lineage-title { font-size:13px; font-weight:700; letter-spacing:.02em; color:#c7d6ff; margin:0 0 14px; }
+.research-lineage-list { list-style:none; display:grid; gap:12px; margin:0; padding:0; }
+.research-lineage-item { display:grid; grid-template-columns:24px minmax(0, 1fr); gap:10px; position:relative; }
+.research-lineage-item:not(:last-child)::after { content:''; position:absolute; width:1px; top:24px; bottom:-12px; left:11px; background:#335cff55; }
+.research-lineage-index { display:grid; place-items:center; width:23px; height:23px; border-radius:50%; background:#18233c; border:1px solid #335cff66; color:#a3b8ff; font-size:12px; font-weight:700; z-index:1; }
+.research-lineage-label { display:block; color:#8ea2c6; font-size:12px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; }
+.research-lineage-question { display:block; color:#f5f5ef; font-size:14px; line-height:1.45; margin-top:2px; }
+.research-lineage-reason { color:#aebacb; font-size:13px; line-height:1.45; margin:3px 0 0; }
+.research-lineage-reason span { color:#8ea2c6; font-weight:600; }
+.research-lineage-sources { display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
+.research-lineage-source { color:#8cb2ff; font-size:12px; text-decoration:none; }
+.research-lineage-source:hover { color:#fff; text-decoration:underline; }
+
 .guide-steps-container { margin-top:10px; }
 .guide-subtitle { font-size:15px; font-weight:700; color:#e2ebff; margin:0 0 14px; }
 .guide-steps-list { margin:0; padding-left:20px; display:grid; gap:16px; }
@@ -668,6 +682,38 @@ kbd { padding:2px 5px; border:1px solid #252a341f; border-radius:4px; font:inher
 }
 .research-shell .research-active-questions small {
   color: #596273;
+}
+
+.research-shell .research-lineage {
+  background: #F8FAFC;
+  border-color: rgba(37, 42, 52, 0.08);
+}
+.research-shell .research-lineage-title {
+  color: var(--ink);
+}
+.research-shell .research-lineage-item:not(:last-child)::after {
+  background: rgba(36, 71, 198, 0.28);
+}
+.research-shell .research-lineage-index {
+  background: #DFE7F4;
+  border-color: rgba(36, 71, 198, 0.26);
+  color: #1B3DA6;
+}
+.research-shell .research-lineage-label,
+.research-shell .research-lineage-reason span {
+  color: #596273;
+}
+.research-shell .research-lineage-question {
+  color: var(--ink);
+}
+.research-shell .research-lineage-reason {
+  color: var(--domi-muted);
+}
+.research-shell .research-lineage-source {
+  color: #1B3DA6;
+}
+.research-shell .research-lineage-source:hover {
+  color: #122B80;
 }
 
 .research-shell .research-unconfirmed-box {

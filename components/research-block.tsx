@@ -68,6 +68,9 @@ export function ResearchBlock({ runId, onConvertToTask }: { runId: string, onCon
   // Detectar si algún paso está en reintento o recuperándose (Render Workflows)
   const recoveringStep = isWorking && view.steps.find(s => s.status === 'running' && s.attempt > 1)
   const currentStepIndex = view.currentStep ? STEP_ORDER.indexOf(view.currentStep) : -1
+  const firstQuestion = view.questions.find(question => question.round === 1)
+  const followUpQuestion = view.questions.find(question => question.round === 2)
+  const firstRoundSources = view.sources.filter(source => source.round === 1)
 
   return (
     <section className="research-block" aria-label={t("Investigación de apoyo")}>
@@ -144,6 +147,54 @@ export function ResearchBlock({ runId, onConvertToTask }: { runId: string, onCon
       {/* ESTADO 3 Y 4: RESULTADOS CON FUENTES Y LO SIN CONFIRMAR */}
       {isDone && view.guide && (
         <div className="research-results">
+          <section className="research-lineage" aria-labelledby="research-lineage-title">
+            <h4 id="research-lineage-title" className="research-lineage-title">{t("Ruta de investigación")}</h4>
+            <ol className="research-lineage-list">
+              <li className="research-lineage-item">
+                <span className="research-lineage-index" aria-hidden="true">1</span>
+                <div>
+                  <span className="research-lineage-label">{t("Pregunta inicial")}</span>
+                  {firstQuestion ? (
+                    <>
+                      <strong className="research-lineage-question">{firstQuestion.question}</strong>
+                      {firstQuestion.askedBecause && <p className="research-lineage-reason"><span>{t("Se preguntó porque:")}</span> {firstQuestion.askedBecause}</p>}
+                    </>
+                  ) : <p className="research-lineage-reason">{t("La primera pregunta no está disponible en esta vista.")}</p>}
+                </div>
+              </li>
+              <li className="research-lineage-item">
+                <span className="research-lineage-index" aria-hidden="true">2</span>
+                <div>
+                  <span className="research-lineage-label">{t("Hallazgos guardados")}</span>
+                  <p className="research-lineage-reason">
+                    {firstRoundSources.length} {t(firstRoundSources.length === 1 ? "fuente guardada de la primera búsqueda" : "fuentes guardadas de la primera búsqueda")}
+                  </p>
+                  {firstRoundSources.length > 0 && (
+                    <div className="research-lineage-sources" aria-label={t("Fuentes guardadas de la primera búsqueda")}>
+                      {firstRoundSources.map((source, index) => (
+                        <a key={`${source.url}-${index}`} href={source.url} target="_blank" rel="noreferrer" className="research-lineage-source">
+                          {source.name || getDomain(source.url)}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </li>
+              <li className="research-lineage-item">
+                <span className="research-lineage-index" aria-hidden="true">3</span>
+                <div>
+                  <span className="research-lineage-label">{t("Pregunta de seguimiento")}</span>
+                  {followUpQuestion ? (
+                    <>
+                      <strong className="research-lineage-question">{followUpQuestion.question}</strong>
+                      {followUpQuestion.askedBecause && <p className="research-lineage-reason"><span>{t("Se preguntó porque:")}</span> {followUpQuestion.askedBecause}</p>}
+                    </>
+                  ) : <p className="research-lineage-reason">{t("No se necesitó una segunda búsqueda; la guía se preparó con los hallazgos guardados de la primera vuelta.")}</p>}
+                </div>
+              </li>
+            </ol>
+          </section>
+
           {/* Micro-pasos fundamentados */}
           {view.guide.steps.length > 0 && (
             <div className="guide-steps-container">

@@ -5,6 +5,7 @@ import { dispatchResearch } from '@/lib/research-dispatch'
 import { requireGuest, mutationBody, ipBucket } from '@/lib/guest'
 import { LIMITS } from '@/lib/admission'
 import { PolicyError, failureResponse, logFailure, requestId, withContext } from '@/lib/operations'
+import { requestedDemoFault } from '@/lib/demo-fault'
 
 export const runtime = 'nodejs'
 const startSchema = z.object({
@@ -29,7 +30,10 @@ export async function POST(request: Request) {
       } else {
         const parsed = startSchema.safeParse(body)
         if (!parsed.success) throw new PolicyError(400, 'INVALID_REQUEST')
-        runId = await createResearchRun(parsed.data, owner, request.headers.get('idempotency-key') ?? '', ipBucket(request))
+        // This is intentionally header-only: the public JSON contract cannot
+        // select a demo run, and the secret never reaches browser code.
+        runId = await createResearchRun(parsed.data, owner, request.headers.get('idempotency-key') ?? '', ipBucket(request),
+          { demoFault: requestedDemoFault(request) })
       }
       const result = await dispatchResearch(runId, owner)
       return Response.json({ ...result, requestId: requestId() }, {

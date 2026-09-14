@@ -32,7 +32,8 @@ export function safeRunError(error: unknown) {
 }
 
 /** External work runs WITHOUT a transaction. Claim + commit each lock run before step. */
-export async function runStep<W, R = W>(runId: string, step: string, work: () => Promise<W>, persist?: (client: SqlClient, value: W) => Promise<R>): Promise<R> {
+/** The attempt comes from the persisted step ledger, never process memory. */
+export async function runStep<W, R = W>(runId: string, step: string, work: (attempt: number) => Promise<W>, persist?: (client: SqlClient, value: W) => Promise<R>): Promise<R> {
   assertAdmission()
   const generation = currentGeneration(runId)
   const claim = await transaction(async client => {
@@ -66,7 +67,7 @@ export async function runStep<W, R = W>(runId: string, step: string, work: () =>
   }
   return withContext({ step, attempt }, async () => {
     try {
-      const value = await work()
+      const value = await work(attempt)
       return await transaction(async client => {
         await ownsStep(client)
         const result = persist ? await persist(client, value) : value as unknown as R

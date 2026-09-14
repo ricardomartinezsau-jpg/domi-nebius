@@ -35,6 +35,24 @@ test('creation with unavailable DB returns 503 without dispatching', async () =>
   assert.equal(dbCalls, 1)
 })
 
+test('only the operator-only header marks a newly created run for the retry demo', async () => {
+  let options
+  const demoToken = '0123456789abcdef0123456789abcdef'
+  const load = loader({
+    'lib/admission.ts': { LIMITS: { researchBytes: 8192 } },
+    'lib/research.ts': { readResearch: async () => null },
+    'lib/research-lifecycle.ts': { createResearchRun: async (...args) => { options = args[4]; return runId } },
+    'lib/research-dispatch.ts': { dispatchResearch: async () => ({ runId, accepted: true, dispatchState: 'accepted' }) },
+    'lib/demo-fault.ts': { requestedDemoFault: () => true },
+  }, { process: { env: { NODE_ENV: 'test', DOMI_ADMISSION_ENABLED: 'true', BETTER_AUTH_SECRET: 'synthetic-secret-with-more-than-thirty-two-characters', BETTER_AUTH_URL: 'https://domi.test', DOMI_DEMO_FAULT_ENABLED: 'true', DOMI_DEMO_FAULT_TOKEN: demoToken } } })
+  const guest = load('lib/guest.ts')
+  const request = post('/api/research', { taskTitle: 'synthetic', blocker: 'synthetic' }, `${guest.guestCookie()}=${guest.issueGuest()}`)
+  request.headers.set('idempotency-key', 'synthetic-key-123456')
+  request.headers.set('x-domi-demo-fault-token', demoToken)
+  assert.equal((await load('app/api/research/route.ts').POST(request)).status, 202)
+  assert.equal(options.demoFault, true)
+})
+
 test('triage rejects malformed, oversized and anonymous requests without generation', async () => {
   let generated = 0
   const load = loader({ 'lib/db.ts': {}, 'lib/nebius.ts': { generateStructured: async () => { generated++; throw new Error('must not be reached') } } })

@@ -2,6 +2,7 @@ import { task, type TaskContext } from '@renderinc/sdk/workflows'
 import { executeQuestionOne, executeSearchOne, executeGap, executeSearchTwo, executeGuide, finishRun, markRunFailed } from './research.ts'
 import { StepBusyError, StaleExecutionError, withExecution } from './research-execution.ts'
 import { PolicyError, logFailure, withContext } from './operations.ts'
+import { demoFaultEnabledForRun, executeDemoFault } from './demo-fault.ts'
 
 type StepOutcome = { kind: 'done' | 'busy' | 'stopped'; code?: string }
 
@@ -29,6 +30,7 @@ function defineStep(name: string, work: (runId: string) => Promise<unknown>, tim
 }
 export const questionOneTask = defineStep('questionOne', executeQuestionOne)
 export const searchOneTask = defineStep('searchOne', executeSearchOne)
+export const demoFaultTask = defineStep('demoFault', executeDemoFault, 30, 1)
 export const gapTask = defineStep('gap', executeGap)
 export const searchTwoTask = defineStep('searchTwo', executeSearchTwo)
 export const guideTask = defineStep('guide', executeGuide, 180)
@@ -39,7 +41,12 @@ export const researchWorkflow = task(
   async (ctx: TaskContext, runId: string, generation: number, correlation: string) =>
     withContext({ requestId: correlation }, () => withExecution(runId, generation, async () => {
       try {
-        for (const step of [questionOneTask, searchOneTask, gapTask, searchTwoTask, guideTask, finishTask]) {
+        // searchOne commits the first question and all its findings before the
+        // optional fault is even considered. A retry must therefore reuse them.
+        const steps = [questionOneTask, searchOneTask]
+        if (await demoFaultEnabledForRun(runId)) steps.push(demoFaultTask)
+        steps.push(gapTask, searchTwoTask, guideTask, finishTask)
+        for (const step of steps) {
           const result = await ctx.run(step, runId, generation, correlation)
           if (result.kind !== 'done') return { ok: false, runId, outcome: result.kind }
         }
