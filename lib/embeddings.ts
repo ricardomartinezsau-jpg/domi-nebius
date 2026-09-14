@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 /**
  * Huellas numéricas: convierten una tarea en un vector para poder buscar por
  * parecido ("esto ya lo intentaste tres veces") y no por palabra exacta.

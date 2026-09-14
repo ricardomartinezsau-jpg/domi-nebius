@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 /**
  * El reconocimiento de voz del navegador no está en las definiciones estándar
  * de TypeScript. Se declara solo lo que este producto usa, no la API completa:

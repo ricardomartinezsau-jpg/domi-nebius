@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 import { transaction, type SqlClient } from './db.ts'
 import { PolicyError, logFailure } from './operations.ts'
 

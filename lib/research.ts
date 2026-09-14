@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 import { z } from 'zod'
 import { query, queryOne, transaction, type SqlClient } from './db.ts'
 import { runStep, StepBusyError, StaleExecutionError, withExecution, lockCurrentRun, currentGeneration, safeRunError } from './research-execution.ts'

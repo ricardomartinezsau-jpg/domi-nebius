@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 import { betterAuth } from 'better-auth'
 import { nextCookies } from 'better-auth/next-js'
 import { db } from './db'

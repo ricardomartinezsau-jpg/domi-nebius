@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 /** Compile with synthetic process configuration. Never import .env.local credentials.
  * Next still reads env files; every declared key is shadowed before it starts.
  * This is NOT a production build or a validation of the live database schema.

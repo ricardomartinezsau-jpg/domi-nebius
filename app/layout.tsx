@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 import type { Metadata } from 'next'
 import { Atkinson_Hyperlegible_Next } from 'next/font/google'
 import './globals.css'

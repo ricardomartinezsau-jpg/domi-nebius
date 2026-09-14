@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 import { createOpenAI } from '@ai-sdk/openai'
 import { generateText, Output } from 'ai'
 import type { z } from 'zod'

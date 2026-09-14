@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { activeRun, elapsedMs, emptySession, matchTask, restoreSession, sessionReducer as reduce } from '../lib/session.ts'

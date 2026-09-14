@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { webcrypto } from 'node:crypto'
