@@ -1,6 +1,6 @@
 # Evaluación Nebius — Domi
 
-Fecha de inicio (UTC; **13 de septiembre en Ciudad de México**): 2026-09-14T05:28:45.388Z. Fase rápida: `google/gemma-3-27b-it`. Fase de detalle: `openai/gpt-oss-120b`.
+Fecha: 2026-09-14T06:49:21.161Z. Fase rápida: `google/gemma-3-27b-it`. Fase de detalle: `openai/gpt-oss-120b`.
 
 ## Qué se mide y por qué
 
@@ -21,7 +21,7 @@ en el patrón de evaluación pointwise del notebook `day-1-evaluation-and-struct
 del curso de GenAI de Google/Kaggle. Se eligió así a propósito: es gratis, reproducible, y
 cada aprobación se puede señalar con el dedo en el código que la verificó.
 
-Evidencia completa y reproducible: [`2026-09-14T05-28-45-388Z-37c53862.json`](evaluation-evidence/2026-09-14T05-28-45-388Z-37c53862.json).
+Evidencia completa y reproducible: [`2026-09-14T06-49-21-161Z-4743a228.json`](evaluation-evidence/2026-09-14T06-49-21-161Z-4743a228.json).
 
 ## Mediciones
 
@@ -29,12 +29,12 @@ Evidencia completa y reproducible: [`2026-09-14T05-28-45-388Z-37c53862.json`](ev
 | --- | --- | --- |
 | Casos que pasan contrato + rúbrica | 5/5 | No equivale a precisión semántica completa |
 | Conformidad de esquema | 5/5 | Contrato estructural de ambas fases |
-| **Latencia rápida — `google/gemma-3-27b-it`** | **7356 ms** | 5/5 respuestas completas; objetivo <5000 ms: No cumple objetivo |
-| Latencia detalle — `openai/gpt-oss-120b` | 4669 ms | 5/5 respuestas completas; llega en segundo plano |
-| Latencia total (ambas fases) | 12025 ms | 5/5 casos con las dos fases evaluables |
-| Costo medio rápido | $0.000167 USD | Cobertura de costo: 5/5 |
-| Costo medio detalle | $0.000926 USD | Cobertura de costo: 5/5 |
-| Costo medio por vaciado | $0.001093 USD | Suma de ambas fases; cobertura: 5/5 |
+| **Latencia rápida — `google/gemma-3-27b-it`** | **9608 ms** | 5/5 respuestas completas; objetivo <5000 ms: No cumple objetivo |
+| Latencia detalle — `openai/gpt-oss-120b` | 8402 ms | 5/5 respuestas completas; llega en segundo plano |
+| Latencia total (ambas fases) | 18010 ms | 5/5 casos con las dos fases evaluables |
+| Costo medio rápido | $0.000170 USD | Cobertura de costo: 5/5 |
+| Costo medio detalle | $0.000972 USD | Cobertura de costo: 5/5 |
+| Costo medio por vaciado | $0.001141 USD | Suma de ambas fases; cobertura: 5/5 |
 
 Tarifas de referencia por fase (una estimación no sustituye la facturación de Nebius):
 
@@ -45,10 +45,10 @@ Tarifas de referencia por fase (una estimación no sustituye la facturación de 
 
 ### Caso 1: Parálisis por análisis (multi-bandeja)
 
-- Estado: PASA · rápida: 12696 ms · detalle: 4357 ms · total: 17053 ms.
-- Rápida — `google/gemma-3-27b-it`: 649 entrada / 266 salida · 12696 ms · costo: $0.000191 USD.
-- Detalle — `openai/gpt-oss-120b`: 405 entrada / 1242 salida · 4357 ms · costo: $0.000806 USD.
-- Total: 1054 entrada / 1508 salida · costo estimado: $0.000997 USD.
+- Estado: PASA · rápida: 10918 ms · detalle: 11014 ms · total: 21932 ms.
+- Rápida — `google/gemma-3-27b-it`: 649 entrada / 247 salida · 10918 ms · costo: $0.000183 USD.
+- Detalle — `openai/gpt-oss-120b`: 405 entrada / 1885 salida · 11014 ms · costo: $0.001192 USD.
+- Total: 1054 entrada / 2132 salida · costo estimado: $0.001375 USD.
 - Arranque observado: bebe un vaso de agua y respira profundo tres veces..
 - PASA: Regla dura · no-schema-leak.
 - PASA: Regla dura · no-markup.
@@ -76,11 +76,11 @@ Revisión humana pendiente: Clasificación semántica real de cada ítem (esto s
 
 ### Caso 2: Trampa de hiperfoco en actividad de cueva
 
-- Estado: PASA · rápida: 3153 ms · detalle: 4568 ms · total: 7721 ms.
-- Rápida — `google/gemma-3-27b-it`: 645 entrada / 184 salida · 3153 ms · costo: $0.000157 USD.
-- Detalle — `openai/gpt-oss-120b`: 404 entrada / 1406 salida · 4568 ms · costo: $0.000904 USD.
-- Total: 1049 entrada / 1590 salida · costo estimado: $0.001062 USD.
-- Arranque observado: bebe un vaso de agua y respira profundo 3 veces..
+- Estado: PASA · rápida: 13758 ms · detalle: 6005 ms · total: 19763 ms.
+- Rápida — `google/gemma-3-27b-it`: 645 entrada / 189 salida · 13758 ms · costo: $0.000159 USD.
+- Detalle — `openai/gpt-oss-120b`: 404 entrada / 977 salida · 6005 ms · costo: $0.000647 USD.
+- Total: 1049 entrada / 1166 salida · costo estimado: $0.000806 USD.
+- Arranque observado: bebe un vaso de agua y pon una canción que te guste..
 - PASA: Regla dura · no-schema-leak.
 - PASA: Regla dura · no-markup.
 - PASA: Regla dura · no-shouting.
@@ -104,11 +104,11 @@ Revisión humana pendiente: Clasificación semántica real de cada ítem (esto s
 
 ### Caso 3: Cadena de dependencias
 
-- Estado: PASA · rápida: 3728 ms · detalle: 6106 ms · total: 9834 ms.
-- Rápida — `google/gemma-3-27b-it`: 638 entrada / 185 salida · 3728 ms · costo: $0.000157 USD.
-- Detalle — `openai/gpt-oss-120b`: 396 entrada / 2060 salida · 6106 ms · costo: $0.001295 USD.
-- Total: 1034 entrada / 2245 salida · costo estimado: $0.001452 USD.
-- Arranque observado: bebe un vaso de agua y respira profundo 3 veces..
+- Estado: PASA · rápida: 8978 ms · detalle: 9612 ms · total: 18590 ms.
+- Rápida — `google/gemma-3-27b-it`: 638 entrada / 215 salida · 8978 ms · costo: $0.000169 USD.
+- Detalle — `openai/gpt-oss-120b`: 397 entrada / 1857 salida · 9612 ms · costo: $0.001174 USD.
+- Total: 1035 entrada / 2072 salida · costo estimado: $0.001343 USD.
+- Arranque observado: bebe un vaso de agua y respira hondo 3 veces..
 - PASA: Regla dura · no-schema-leak.
 - PASA: Regla dura · no-markup.
 - PASA: Regla dura · no-shouting.
@@ -133,10 +133,10 @@ Revisión humana pendiente: Clasificación semántica real de cada ítem (esto s
 
 ### Caso 4: Tarea monstruo que requiere micro-pasos
 
-- Estado: PASA · rápida: 8911 ms · detalle: 3756 ms · total: 12667 ms.
-- Rápida — `google/gemma-3-27b-it`: 618 entrada / 227 salida · 8911 ms · costo: $0.000171 USD.
-- Detalle — `openai/gpt-oss-120b`: 376 entrada / 1109 salida · 3756 ms · costo: $0.000722 USD.
-- Total: 994 entrada / 1336 salida · costo estimado: $0.000893 USD.
+- Estado: PASA · rápida: 6480 ms · detalle: 7170 ms · total: 13650 ms.
+- Rápida — `google/gemma-3-27b-it`: 618 entrada / 210 salida · 6480 ms · costo: $0.000164 USD.
+- Detalle — `openai/gpt-oss-120b`: 376 entrada / 1405 salida · 7170 ms · costo: $0.000899 USD.
+- Total: 994 entrada / 1615 salida · costo estimado: $0.001064 USD.
 - Arranque observado: bebe un vaso de agua y pon una canción que te guste..
 - PASA: Regla dura · no-schema-leak.
 - PASA: Regla dura · no-markup.
@@ -163,10 +163,10 @@ Revisión humana pendiente: Clasificación semántica real de cada ítem (esto s
 
 ### Caso 5: Caso de dificultad — colapso sensorial vs. deber externo
 
-- Estado: PASA · rápida: 8294 ms · detalle: 4556 ms · total: 12850 ms.
-- Rápida — `google/gemma-3-27b-it`: 646 entrada / 185 salida · 8294 ms · costo: $0.000158 USD.
-- Detalle — `openai/gpt-oss-120b`: 400 entrada / 1405 salida · 4556 ms · costo: $0.000903 USD.
-- Total: 1046 entrada / 1590 salida · costo estimado: $0.001061 USD.
+- Estado: PASA · rápida: 7906 ms · detalle: 8207 ms · total: 16113 ms.
+- Rápida — `google/gemma-3-27b-it`: 646 entrada / 222 salida · 7906 ms · costo: $0.000173 USD.
+- Detalle — `openai/gpt-oss-120b`: 400 entrada / 1478 salida · 8207 ms · costo: $0.000947 USD.
+- Total: 1046 entrada / 1700 salida · costo estimado: $0.001120 USD.
 - Arranque observado: bebe un vaso de agua y cuenta hasta diez..
 - PASA: Regla dura · somatic-override.
 - PASA: Regla dura · no-schema-leak.

@@ -42,7 +42,9 @@ Tras cargar de nuevo la pantalla y hacer un GET autenticado del mismo run, la re
 
 ## Nebius
 
-La evaluación autorizada inició a las 23:28:45 CDT y está en `EVALUATION.md` y el JSON de evidencia. Mide los cinco fixtures con `google/gemma-3-27b-it` en la fase rápida y `openai/gpt-oss-120b` en detalle: 5/5 pasan contrato y rúbrica; media rápida 7356 ms, detalle 4669 ms, total 12025 ms y costo estimado medio $0.001093 USD. Las tarifas se etiquetan como no verificadas, no como facturación de Nebius.
+La evaluación autorizada más reciente inició a las `2026-09-14T06:49:21.161Z` y está en `EVALUATION.md` y `../../evaluation-evidence/2026-09-14T06-49-21-161Z-4743a228.json`. Mide los cinco fixtures con `google/gemma-3-27b-it` en la fase rápida y `openai/gpt-oss-120b` en detalle: 5/5 pasan contrato y rúbrica; media rápida 9608 ms, detalle 8402 ms, total 18010 ms y costo estimado medio $0.001141 USD. Las tarifas se etiquetan como no verificadas, no como facturación de Nebius.
+
+Esta última corrida registra `triageSourceSha256` `637c660e198310ab7f4503069b3b3667a6049ca1f4ad2775bbb16bbeb2ce8085`, igual al SHA-256 actual de `lib/triage.ts`. Render ya servía `ae5eb4b` en web y workflow al iniciar la medición; los commits posteriores de evidencia no modifican ese archivo.
 
 ## Comprobación pública posterior
 
