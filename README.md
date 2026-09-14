@@ -35,8 +35,11 @@ npm run dev
 
 El vaciado requiere ahora PostgreSQL para cuotas, `BETTER_AUTH_SECRET` (32+ caracteres),
 el origen exacto en `BETTER_AUTH_URL` y Nebius. Research usa además Linkup y, en producción,
-Render Workflows. `DOMI_ADMISSION_ENABLED` está cerrado por defecto: no habilitarlo ni
-migrar una base remota sin completar las puertas de [remediación](BACKEND_REMEDIATION.md).
+Render Workflows. En el repositorio `DOMI_ADMISSION_ENABLED` está cerrado por defecto y
+así debe quedarse en local. En producción esa puerta ya está abierta en `domi-web` y en
+`domi-research`, con la migración `0007` aplicada y verificada contra la base real: el
+estado y su evidencia están en [remediación](BACKEND_REMEDIATION.md). No migrar ninguna
+otra base remota sin completar esas mismas puertas.
 
 ## Cómo está armado
 

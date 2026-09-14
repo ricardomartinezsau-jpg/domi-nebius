@@ -1,12 +1,17 @@
 # Backend remediation — operación y límites
 
-Estado al 13 de septiembre de 2026: la batería SQL aislada aprobó 8/8 casos;
-`068f08c0c163f3653a687e2bf39be683ee2a4912` se integró y publicó en `main`.
-`domi-web` quedó `live` en Render y `domi-research` registró una versión `ready`
-del mismo commit. Esto **no autoriza** aplicar la migración `0007`, tocar la base
-real, habilitar admisión, iniciar tareas de Workflow ni ejecutar Nebius.
+Estado al cierre del 13 de septiembre de 2026: la migración
+`0007_admission_and_execution.sql` **está aplicada y verificada en la base real**, la
+admisión está **abierta** en `domi-web` y en `domi-research`, y
+`4eaba8786493558860def32f9441e702861518dc` está desplegado en ambos servicios. La
+incidencia de esquema divergente que este documento registraba queda cerrada; su
+registro se conserva más abajo con la evidencia de cierre.
 
-La migración aditiva pendiente es `db/migrations/0007_admission_and_execution.sql`.
+Lo que este estado todavía **no** acredita: no existe una investigación completa
+ejecutada sobre `4eaba87`. La corrida real más reciente —la última de doce con éxito en
+Render— se ejecutó con `068f08c`. Hasta que el commit vivo tenga una corrida propia, la
+evidencia end-to-end acredita el commit anterior.
+
 No se han modificado migraciones históricas, proveedores, modelos ni el esquema de
 producto de `lib/triage.ts`.
 
@@ -135,8 +140,12 @@ ocultar el primario. El modelo persistido para investigación es RESEARCH_MODEL.
 El pool sigue en `max:5` por proceso, con espera de conexión 10 s, SQL 10 s, lock 3 s
 y conexión ociosa 30 s. Hay listener de errores ociosos y liberación en finally.
 No se afirma que cinco sea un cuello de botella. Faltan mediciones y límites DB.
-La opción TLS preexistente no se altera; su validación de certificado sigue pendiente
-de revisar frente a la red/configuración reales.
+La opción TLS preexistente no se altera. `DATABASE_SSL` no está configurada en `domi-web`
+ni en `domi-research`: ambos conectan por la red privada de Render sin TLS, y así lo
+declara la sonda de arranque del Workflow. Es una discrepancia documentada y no
+bloqueante mientras la base siga siendo alcanzable sólo desde esa red; si eso cambia,
+`DATABASE_SSL=require` deja de ser opcional y su validación de certificado —hoy con
+`rejectUnauthorized: false`— tendría que revisarse antes.
 
 ## Pruebas y puertas antes de publicación
 
@@ -155,30 +164,34 @@ de revisar frente a la red/configuración reales.
   servicios pagados. El E2E histórico conserva valor de evidencia anterior, pero su
   contrato viejo no valida la nueva generación/propiedad.
 
-### Incidencia activa: despliegue y esquema real divergentes
+### Incidencia cerrada: el esquema real ya sostiene el contrato nuevo
 
-La batería SQL aislada comprobó el contrato nuevo sobre un esquema sintético
-desechable; no certifica la base de datos desplegada. La migración
-`0007_admission_and_execution.sql` **sigue sin aplicarse en la base real**.
+La migración `0007_admission_and_execution.sql` se aplicó a la base real el 13 de
+septiembre de 2026 y quedó comprobada con consultas de sólo lectura contra la base
+desplegada: `_migrations` registra `0007_admission_and_execution.sql` con la huella
+esperada; existe `admission_counters`; `runs` tiene `guest_owner`, `idempotency_key`,
+`request_hash`, `generation`, `dispatch_state`, `dispatch_started_at` y
+`correlation_id`; existe `run_steps.generation`; y existen los índices
+`runs_guest_idempotency` y `runs_guest_active`. La sonda de arranque del Workflow
+reporta la base alcanzable en decenas de milisegundos y sin error SQL de esquema.
 
-Por tanto, `068f08c` no está solamente con la admisión cerrada: las rutas que cruzan
-el contrato nuevo fallan por incompatibilidad SQL de esquema. Las lecturas autorizadas
-consultan `runs.guest_owner`, `runs.dispatch_state` y `runs.dispatch_started_at`, y
-registran cuota en `admission_counters`; con 0007 ausente arrojan error SQL aun cuando
-la admisión pagada está cerrada. Las mutaciones y el ejecutor también requieren
-`idempotency_key`, `request_hash`, `generation`, `correlation_id`,
-`run_steps.generation`, los índices nuevos y `admission_counters`.
+Con eso desaparece la incompatibilidad que bloqueaba las rutas del contrato nuevo:
+lecturas autorizadas sobre `runs.guest_owner`, `runs.dispatch_state` y
+`runs.dispatch_started_at`, registro de cuota en `admission_counters`, mutaciones y
+ejecutor. La admisión se abrió después y por separado —`DOMI_ADMISSION_ENABLED=true` en
+`domi-web` y en `domi-research`—, que es el orden que este documento exigía.
 
-La ausencia de `DOMI_ADMISSION_ENABLED=true` evita admitir trabajo nuevo, pero no hace
-compatible el esquema ni corrige las lecturas existentes. No habilitar admisión hasta
-aplicar y verificar 0007, comprobar logs sin errores SQL y obtener una autorización
-separada para activar web y Workflow.
+Queda pendiente una prueba distinta, que el esquema no cubre: una investigación completa
+ejecutada sobre el commit vivo. Ver «Estado de producción al cierre del 13 de septiembre
+de 2026».
 
-## Procedimiento propuesto — migración 0007 (no ejecutar aún)
+## Procedimiento ejecutado — migración 0007 (aplicada el 13 de septiembre de 2026)
 
-Este procedimiento requiere una autorización posterior y separada. Mantener
-`DOMI_ADMISSION_ENABLED` ausente, `false` o inválido en web y Workflow durante toda la
-operación; la migración no abre admisión.
+Este procedimiento se ejecutó con autorización expresa y separada el 13 de septiembre de
+2026. Se conserva íntegro como registro de lo aplicado y como guía de re-verificación:
+los pasos 2, 3 y 5 siguen siendo las consultas vigentes para comprobar ledger y esquema.
+Durante la operación `DOMI_ADMISSION_ENABLED` se mantuvo cerrada en web y Workflow; la
+admisión se abrió después, en un paso aparte.
 
 1. Confirmar el destino de `DATABASE_URL`, TLS, propietario de la base y una copia de
    seguridad recuperable. El rol debe poder crear `admission_counters`, alterar `runs`
@@ -265,7 +278,7 @@ credenciales nuevas, infraestructura externa o producción; si el esquema o SDK 
 contradicen lo asumido; o si recuperar datos históricos exige adjudicar un propietario
 sin prueba. Documentar el bloqueo antes de continuar.
 
-## Verificación e integración del 13 de septiembre de 2026
+## Verificación e integración de `068f08c` (13 de septiembre de 2026)
 
 `npm test`: **82 pruebas aprobadas**, incluidas las 44 preexistentes, sin proveedores reales.
 `npm run test:backend-sql`: **8/8 casos aprobados** contra PostgreSQL local desechable,
@@ -283,11 +296,36 @@ ninguno de esos mensajes certifica ni invalida el esquema real. Evaluador en
 `domi-research/research` resuelve a ella. Esto confirma build, disponibilidad web y
 registro de tareas, no compatibilidad con la base real ni una ejecución end-to-end.
 
-La admisión permanece cerrada: `DOMI_ADMISSION_ENABLED` está ausente y sólo el literal
-`true` la abre. No se aplicó 0007 en la base real, no se inició ninguna tarea de Workflow,
-no se habilitó admisión y no se ejecutó Nebius, Linkup ni E2E pagado. Better Auth,
-pgvector, la migración completa desde una base existente y la concurrencia compleja entre
-workers siguen fuera de esta batería.
+Esa batería, por sí sola, no tocó la base real: al escribirla, `0007` seguía sin
+aplicarse, la admisión estaba cerrada y no se ejecutó Nebius, Linkup ni E2E pagado.
+Better Auth, pgvector, la migración completa desde una base existente y la concurrencia
+compleja entre workers siguen fuera de esta batería.
+
+## Estado de producción al cierre del 13 de septiembre de 2026
+
+Migración `0007` aplicada y verificada en la base real: `admission_counters`, las ocho
+columnas del contrato nuevo y los índices de idempotencia están presentes, con la huella
+de ledger esperada. Admisión abierta en `domi-web` y en `domi-research`. Ambos servicios
+sirven `4eaba8786493558860def32f9441e702861518dc`: `domi-web` en estado `live` y
+`domi-research` con esa versión registrada y lista por auto-deploy. En la web están
+presentes las claves de base, Nebius, Linkup, API de Render y Better Auth, con el slug
+`domi-research`; en el Workflow, las de base, Nebius y Linkup. La sonda de base del
+Workflow responde en decenas de milisegundos, sin TLS y sin error SQL.
+
+Evidencia de ejecución: Render registra doce corridas de investigación con estado de
+éxito. Es el estado de la plataforma, no un juicio sobre la calidad del resultado: el
+falso éxito con cero hallazgos que originó esta remediación también terminó «bien» para
+Render. La más reciente se ejecutó con `068f08c`; **`4eaba87` todavía no tiene corrida
+propia**. Esa es la prueba que falta para acreditar el commit vivo end-to-end.
+
+`DATABASE_SSL` no está configurada en ninguno de los dos servicios; hoy conectan por la
+red privada de Render sin TLS. Documentado, no bloqueante para este sprint.
+
+Procedencia de esta sección: consultas de sólo lectura a la base y al panel de Render
+hechas por el operador el 13 de septiembre de 2026. Los archivos
+`evaluation-evidence/production-ignition-2026-09-13.txt` y
+`evaluation-evidence/production-entry-fix-2026-09-13.txt` conservan los registros del
+encendido, de la corrección de `BETTER_AUTH_URL` y de la sonda de base sin TLS.
 
 Advertencia registrada: Node recompila `lib/db.ts` como ESM porque `package.json` no
 declara `type: "module"`; es deuda técnica no bloqueante y queda fuera de esta rama.
