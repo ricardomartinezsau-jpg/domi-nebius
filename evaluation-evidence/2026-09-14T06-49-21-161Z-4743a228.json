@@ -1,0 +1,1394 @@
+{
+  "runId": "2026-09-14T06-49-21-161Z-4743a228",
+  "startedAt": "2026-09-14T06:49:21.161Z",
+  "finishedAt": "2026-09-14T06:50:51.626Z",
+  "nodeVersion": "v26.4.0",
+  "endpoint": "https://api.tokenfactory.nebius.com/v1/chat/completions",
+  "models": {
+    "quick": "google/gemma-3-27b-it",
+    "detail": "openai/gpt-oss-120b"
+  },
+  "settings": {
+    "maxOutputTokens": 4096,
+    "timeoutMs": 60000,
+    "temperature": 0.2,
+    "contextDate": "2026-09-14",
+    "phases": {
+      "quick": {
+        "model": "google/gemma-3-27b-it",
+        "purpose": "bandejas y arranque visible"
+      },
+      "detail": {
+        "model": "openai/gpt-oss-120b",
+        "purpose": "dependencias y micro-pasos en segundo plano"
+      }
+    }
+  },
+  "referencePricing": {
+    "quick": {
+      "model": "google/gemma-3-27b-it",
+      "promptPerMillionUsd": 0.13,
+      "completionPerMillionUsd": 0.4,
+      "verified": false,
+      "source": "baseline histórico del evaluador; la tarifa vigente debe verificarse antes de atribuir facturación real"
+    },
+    "detail": {
+      "model": "openai/gpt-oss-120b",
+      "promptPerMillionUsd": 0.15,
+      "completionPerMillionUsd": 0.6,
+      "verified": false,
+      "source": "https://nebius.com/token-factory/prices (base; referencia consultada 2026-09-13, confirmar antes de atribuir facturación real)"
+    }
+  },
+  "targets": {
+    "quickLatencyMs": 5000,
+    "totalLatencyMs": 20000,
+    "averageEstimatedCostUsd": 0.002
+  },
+  "provenance": {
+    "fixturesSha256": "121dd50d4388bbd2fb418f23130fbc7435d2689a751ee84e84a8f831bcca2bd6",
+    "triageSourceSha256": "637c660e198310ab7f4503069b3b3667a6049ca1f4ad2775bbb16bbeb2ce8085"
+  },
+  "fixtures": [
+    {
+      "id": "case-01-adhd-paralysis",
+      "name": "Caso 1: Parálisis por análisis (multi-bandeja)",
+      "description": "Mente dispersa con 5 frentes abiertos a la vez. Requiere distribución en las 4 bandejas y un hook de activación.",
+      "rawDump": "Tengo mil cosas en la cabeza y no sé por dónde empezar: tengo que mandar la propuesta al cliente TechCorp, comprar leche y verduras porque el refri está vacío, sacar cita con el dentista por un dolor de muela, contestarle a Luis el WhatsApp de hace tres días y arreglar la fuga del lavabo.",
+      "expected": {
+        "traysPopulated": [
+          "personalBienestar",
+          "profesionalProductiva",
+          "familiarDomestica",
+          "socialComunitaria"
+        ]
+      }
+    },
+    {
+      "id": "case-02-hyperfocus-cave-trap",
+      "name": "Caso 2: Trampa de hiperfoco en actividad de cueva",
+      "description": "La persona quema horas en una actividad de baja tracción mientras evita algo urgente. El modelo debe señalar la trampa sin culpar.",
+      "rawDump": "Llevo 3 horas buscando la paleta de colores perfecta para mi nuevo dashboard en Notion y leyendo tutoriales de atajos de teclado, pero lo que de verdad me urge y me da pánico es mandar las 3 facturas vencidas a mis clientes y llamar al banco por el bloqueo de cuenta.",
+      "expected": {
+        "identifiedCaveTrap": true
+      }
+    },
+    {
+      "id": "case-03-dependency-chain",
+      "name": "Caso 3: Cadena de dependencias",
+      "description": "Tareas donde el desorden cognitivo confunde el orden. El modelo debe ordenar la secuencia real de prerrequisitos.",
+      "rawDump": "Quiero desplegar la nueva versión a producción, pero aún no he corrido las migraciones en staging, y para correr las migraciones necesito pedirle las credenciales a Juan que está en junta, y además tengo que avisarle al equipo por Slack antes de tocar nada.",
+      "expected": {
+        "orderedSequence": true,
+        "firstActionIsPrerequisite": true
+      }
+    },
+    {
+      "id": "case-04-microtask-breakdown",
+      "name": "Caso 4: Tarea monstruo que requiere micro-pasos",
+      "description": "Una tarea grande que detona evitación. El modelo debe desglosarla en acciones de menos de 10 minutos con un primer clic concreto.",
+      "rawDump": "Tengo que hacer la contabilidad y declaración mensual de impuestos de los últimos tres meses. Cada vez que pienso en eso me pongo a limpiar mi cuarto o ver videos en YouTube.",
+      "expected": {
+        "microTasksGenerated": true,
+        "maxMicroTaskMinutes": 10,
+        "hasPhysicalHook": true
+      }
+    },
+    {
+      "id": "case-05-struggle-case-burnout",
+      "name": "Caso 5: Caso de dificultad — colapso sensorial vs. deber externo",
+      "description": "Struggle case. La persona entra en parálisis por sobrecarga sensorial pero tiene un compromiso crítico. Sin aserciones automáticas duras: requiere revisión humana.",
+      "rawDump": "Estoy en parálisis total frente a la pantalla, mi cabeza va a mil por hora y siento que no puedo respirar bien, pero prometí entregar el reporte de ventas hoy a las 5pm y si no lo entrego quedo mal. Por otro lado quiero ponerme a investigar sobre acuarios marinos.",
+      "expected": {
+        "notes": "El modelo suele detectar la investigación de acuarios como actividad de cueva, pero puede sesgarse a empujar el reporte de ventas antes que la regulación del sistema nervioso de la persona. Ver docs/EVALUATION.md para el análisis de esta ejecución."
+      }
+    }
+  ],
+  "summary": {
+    "attempted": 5,
+    "passed": 5,
+    "schemaValid": 5,
+    "quick": {
+      "model": "google/gemma-3-27b-it",
+      "executed": 5,
+      "completed": 5,
+      "meanLatencyMs": 9608,
+      "costCoverage": "5/5",
+      "meanEstimatedCostUsd": 0.00016973600000000003
+    },
+    "detail": {
+      "model": "openai/gpt-oss-120b",
+      "executed": 5,
+      "completed": 5,
+      "meanLatencyMs": 8402,
+      "costCoverage": "5/5",
+      "meanEstimatedCostUsd": 0.0009717
+    },
+    "total": {
+      "completed": 5,
+      "meanLatencyMs": 18010,
+      "costCoverage": "5/5",
+      "meanEstimatedCostUsd": 0.0011414360000000002
+    },
+    "meanQuickMs": 9608,
+    "meanTotalMs": 18010,
+    "meanEstimatedCostUsd": 0.0011414360000000002
+  },
+  "results": [
+    {
+      "id": "case-01-adhd-paralysis",
+      "name": "Caso 1: Parálisis por análisis (multi-bandeja)",
+      "models": {
+        "quick": "google/gemma-3-27b-it",
+        "detail": "openai/gpt-oss-120b"
+      },
+      "phases": {
+        "quick": {
+          "model": "google/gemma-3-27b-it",
+          "skipped": false,
+          "completed": true,
+          "durationMs": 10918,
+          "httpStatus": 200,
+          "finishReason": "stop",
+          "promptTokens": 649,
+          "completionTokens": 247,
+          "estimatedCostUsd": 0.00018317000000000002,
+          "pricing": {
+            "model": "google/gemma-3-27b-it",
+            "promptPerMillionUsd": 0.13,
+            "completionPerMillionUsd": 0.4,
+            "verified": false,
+            "source": "baseline histórico del evaluador; la tarifa vigente debe verificarse antes de atribuir facturación real"
+          }
+        },
+        "detail": {
+          "model": "openai/gpt-oss-120b",
+          "skipped": false,
+          "completed": true,
+          "durationMs": 11014,
+          "httpStatus": 200,
+          "finishReason": "stop",
+          "promptTokens": 405,
+          "completionTokens": 1885,
+          "estimatedCostUsd": 0.00119175,
+          "pricing": {
+            "model": "openai/gpt-oss-120b",
+            "promptPerMillionUsd": 0.15,
+            "completionPerMillionUsd": 0.6,
+            "verified": false,
+            "source": "https://nebius.com/token-factory/prices (base; referencia consultada 2026-09-13, confirmar antes de atribuir facturación real)"
+          }
+        }
+      },
+      "quickMs": 10918,
+      "detailMs": 11014,
+      "durationMs": 21932,
+      "promptTokens": 1054,
+      "completionTokens": 2132,
+      "estimatedCostUsd": 0.0013749200000000002,
+      "error": null,
+      "assessment": {
+        "schemaValid": true,
+        "schemaIssues": [],
+        "checks": [
+          {
+            "name": "Regla dura · no-schema-leak",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-markup",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-shouting",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hook-is-one-action",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hook-not-empty",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-schema-leak",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-markup",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-shouting",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · micro-steps-present",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · step-budget",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · decomposition-budget",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · first-step-startable",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · sequence-numbered",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hooks-concrete",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · grounded-has-source",
+            "passed": true
+          },
+          {
+            "name": "Hook de activación no vacío",
+            "passed": true
+          },
+          {
+            "name": "Escudo de foco no vacío",
+            "passed": true
+          },
+          {
+            "name": "Bandeja esperada no vacía: personalBienestar",
+            "passed": true
+          },
+          {
+            "name": "Bandeja esperada no vacía: profesionalProductiva",
+            "passed": true
+          },
+          {
+            "name": "Bandeja esperada no vacía: familiarDomestica",
+            "passed": true
+          },
+          {
+            "name": "Bandeja esperada no vacía: socialComunitaria",
+            "passed": true
+          }
+        ],
+        "passed": true,
+        "output": {
+          "trayDispatch": {
+            "personalBienestar": [
+              "Sacar cita con el dentista",
+              "Evaluar intensidad del dolor de muela y tomar analgésico si es necesario"
+            ],
+            "profesionalProductiva": [
+              "Enviar propuesta al cliente TechCorp"
+            ],
+            "familiarDomestica": [
+              "Comprar leche y verduras",
+              "Arreglar la fuga del lavabo"
+            ],
+            "socialComunitaria": [
+              "Revisar WhatsApp y contestar a Luis"
+            ]
+          },
+          "momentumMode": {
+            "activationHook": "bebe un vaso de agua y respira profundo tres veces.",
+            "cognitiveLoadLevel": "alta",
+            "antiDopamineTraps": [
+              {
+                "activity": "revisar redes sociales",
+                "warning": "es fácil caer en scroll infinito"
+              },
+              {
+                "activity": "buscar información sin rumbo",
+                "warning": "evita la investigación excesiva sin un objetivo claro"
+              }
+            ],
+            "singleFocusShield": "elige una tarea de 'lo de casa' y dedícale 5 minutos."
+          },
+          "dependencyOrder": [
+            {
+              "step": 1,
+              "task": "Mandar la propuesta al cliente TechCorp",
+              "dependsOn": [],
+              "whyThisOrder": "No hay ninguna tarea pendiente que impida enviarla."
+            },
+            {
+              "step": 2,
+              "task": "Sacar cita con el dentista",
+              "dependsOn": [],
+              "whyThisOrder": "Puede hacerse en cualquier momento y evita que el dolor empeore."
+            },
+            {
+              "step": 3,
+              "task": "Arreglar la fuga del lavabo",
+              "dependsOn": [],
+              "whyThisOrder": "Previene daños mayores y no depende de otras acciones."
+            },
+            {
+              "step": 4,
+              "task": "Comprar leche y verduras",
+              "dependsOn": [],
+              "whyThisOrder": "Tarea independiente de bajo tiempo."
+            },
+            {
+              "step": 5,
+              "task": "Contestarle a Luis el WhatsApp de hace tres días",
+              "dependsOn": [],
+              "whyThisOrder": "No bloquea ninguna otra actividad."
+            }
+          ],
+          "microTasks": [
+            {
+              "originalTask": "Mandar la propuesta al cliente TechCorp",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir el documento de la propuesta",
+                  "durationMinutes": 2,
+                  "actionableHook": "Haz doble clic en el archivo “Propuesta_TechCorp.docx” que está en tu escritorio."
+                },
+                {
+                  "stepTitle": "Revisar y corregir los puntos clave",
+                  "durationMinutes": 5,
+                  "actionableHook": "Lee la sección “Resumen ejecutivo” y corrige cualquier error ortográfico o de formato."
+                },
+                {
+                  "stepTitle": "Adjuntar y enviar el correo",
+                  "durationMinutes": 3,
+                  "actionableHook": "Abre tu cliente de correo, escribe a luis@techcorp.com, adjunta el documento y pulsa “Enviar”."
+                }
+              ]
+            },
+            {
+              "originalTask": "Sacar cita con el dentista",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir la web o app del dentista",
+                  "durationMinutes": 2,
+                  "actionableHook": "Entra en la página www.dentistaejemplo.com o abre la app “Cita Dental”."
+                },
+                {
+                  "stepTitle": "Seleccionar fecha y hora disponible",
+                  "durationMinutes": 3,
+                  "actionableHook": "Haz clic en el primer día libre que aparezca y elige la hora 10:00 am."
+                },
+                {
+                  "stepTitle": "Confirmar la cita y anotarla",
+                  "durationMinutes": 2,
+                  "actionableHook": "Pulsa “Confirmar” y escribe la cita en tu calendario con una alarma 1 día antes."
+                }
+              ]
+            },
+            {
+              "originalTask": "Arreglar la fuga del lavabo",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Localizar la fuga y cerrar la llave de paso",
+                  "durationMinutes": 2,
+                  "actionableHook": "Ve al lavabo, identifica la gota y gira la llave de paso bajo el fregadero."
+                },
+                {
+                  "stepTitle": "Buscar la herramienta adecuada",
+                  "durationMinutes": 2,
+                  "actionableHook": "Abre el cajón de herramientas y saca la llave inglesa de 10 mm."
+                },
+                {
+                  "stepTitle": "Ajustar la tuerca o aplicar cinta de plomero",
+                  "durationMinutes": 5,
+                  "actionableHook": "Usa la llave para apretar la tuerca que gotea o envuelve la rosca con cinta de plomero y vuelve a apretar."
+                }
+              ]
+            }
+          ]
+        },
+        "humanReview": [
+          "Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías).",
+          "Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada."
+        ]
+      },
+      "success": true
+    },
+    {
+      "id": "case-02-hyperfocus-cave-trap",
+      "name": "Caso 2: Trampa de hiperfoco en actividad de cueva",
+      "models": {
+        "quick": "google/gemma-3-27b-it",
+        "detail": "openai/gpt-oss-120b"
+      },
+      "phases": {
+        "quick": {
+          "model": "google/gemma-3-27b-it",
+          "skipped": false,
+          "completed": true,
+          "durationMs": 13758,
+          "httpStatus": 200,
+          "finishReason": "stop",
+          "promptTokens": 645,
+          "completionTokens": 189,
+          "estimatedCostUsd": 0.00015945000000000003,
+          "pricing": {
+            "model": "google/gemma-3-27b-it",
+            "promptPerMillionUsd": 0.13,
+            "completionPerMillionUsd": 0.4,
+            "verified": false,
+            "source": "baseline histórico del evaluador; la tarifa vigente debe verificarse antes de atribuir facturación real"
+          }
+        },
+        "detail": {
+          "model": "openai/gpt-oss-120b",
+          "skipped": false,
+          "completed": true,
+          "durationMs": 6005,
+          "httpStatus": 200,
+          "finishReason": "stop",
+          "promptTokens": 404,
+          "completionTokens": 977,
+          "estimatedCostUsd": 0.0006468,
+          "pricing": {
+            "model": "openai/gpt-oss-120b",
+            "promptPerMillionUsd": 0.15,
+            "completionPerMillionUsd": 0.6,
+            "verified": false,
+            "source": "https://nebius.com/token-factory/prices (base; referencia consultada 2026-09-13, confirmar antes de atribuir facturación real)"
+          }
+        }
+      },
+      "quickMs": 13758,
+      "detailMs": 6005,
+      "durationMs": 19763,
+      "promptTokens": 1049,
+      "completionTokens": 1166,
+      "estimatedCostUsd": 0.00080625,
+      "error": null,
+      "assessment": {
+        "schemaValid": true,
+        "schemaIssues": [],
+        "checks": [
+          {
+            "name": "Regla dura · no-schema-leak",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-markup",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-shouting",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hook-is-one-action",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hook-not-empty",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-schema-leak",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-markup",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-shouting",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · micro-steps-present",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · step-budget",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · decomposition-budget",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · first-step-startable",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · sequence-numbered",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hooks-concrete",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · grounded-has-source",
+            "passed": true
+          },
+          {
+            "name": "Hook de activación no vacío",
+            "passed": true
+          },
+          {
+            "name": "Escudo de foco no vacío",
+            "passed": true
+          },
+          {
+            "name": "Existe al menos una trampa de dopamina descrita (proxy estructural)",
+            "passed": true
+          }
+        ],
+        "passed": true,
+        "output": {
+          "trayDispatch": {
+            "personalBienestar": [],
+            "profesionalProductiva": [
+              "Enviar 3 facturas vencidas a clientes.",
+              "Llamar al banco para desbloquear la cuenta."
+            ],
+            "familiarDomestica": [],
+            "socialComunitaria": []
+          },
+          "momentumMode": {
+            "activationHook": "bebe un vaso de agua y pon una canción que te guste.",
+            "cognitiveLoadLevel": "alta",
+            "antiDopamineTraps": [
+              {
+                "activity": "investigar paletas de colores",
+                "warning": "perfeccionismo"
+              },
+              {
+                "activity": "tutoriales de atajos",
+                "warning": "procrastinación disfrazada"
+              }
+            ],
+            "singleFocusShield": "elige una de las dos tareas del trabajo y haz solo esa."
+          },
+          "dependencyOrder": [
+            {
+              "step": 1,
+              "task": "Preparar facturas vencidas",
+              "dependsOn": [],
+              "whyThisOrder": "Necesitas tener los documentos listos antes de poder enviarlos."
+            },
+            {
+              "step": 2,
+              "task": "Enviar facturas a los clientes",
+              "dependsOn": [
+                "Preparar facturas vencidas"
+              ],
+              "whyThisOrder": "Sólo puedes enviarlas una vez que estén preparadas."
+            },
+            {
+              "step": 3,
+              "task": "Llamar al banco por el bloqueo de cuenta",
+              "dependsOn": [],
+              "whyThisOrder": "Es independiente y urgente; no depende de las facturas."
+            }
+          ],
+          "microTasks": [
+            {
+              "originalTask": "Preparar facturas vencidas",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir la carpeta de facturas en el ordenador",
+                  "durationMinutes": 2,
+                  "actionableHook": "Haz doble clic en la carpeta ‘Facturas Vencidas’ en tu escritorio."
+                },
+                {
+                  "stepTitle": "Revisar cada factura y guardarla como PDF",
+                  "durationMinutes": 5,
+                  "actionableHook": "Selecciona la primera factura, pulsa Ctrl + P y elige ‘Guardar como PDF’. Repite con las tres."
+                }
+              ]
+            },
+            {
+              "originalTask": "Enviar facturas a los clientes",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Redactar el correo con asunto y mensaje breve",
+                  "durationMinutes": 4,
+                  "actionableHook": "Abre Gmail, haz clic en ‘Redactar’ y escribe: ‘Facturas vencidas – Acción requerida’."
+                },
+                {
+                  "stepTitle": "Adjuntar los PDFs y enviar",
+                  "durationMinutes": 3,
+                  "actionableHook": "Arrastra los tres PDFs al cuerpo del correo y pulsa ‘Enviar’."
+                }
+              ]
+            },
+            {
+              "originalTask": "Llamar al banco por el bloqueo de cuenta",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Buscar el número de atención al cliente del banco",
+                  "durationMinutes": 2,
+                  "actionableHook": "Abre una nueva pestaña, escribe el nombre del banco + ‘número de atención’ y copia el número."
+                },
+                {
+                  "stepTitle": "Realizar la llamada y explicar la situación",
+                  "durationMinutes": 5,
+                  "actionableHook": "Marca el número copiado y, una vez contesten, di: ‘Tengo una cuenta bloqueada y necesito desbloquearla urgentemente.’"
+                }
+              ]
+            }
+          ]
+        },
+        "humanReview": [
+          "Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías).",
+          "Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada."
+        ]
+      },
+      "success": true
+    },
+    {
+      "id": "case-03-dependency-chain",
+      "name": "Caso 3: Cadena de dependencias",
+      "models": {
+        "quick": "google/gemma-3-27b-it",
+        "detail": "openai/gpt-oss-120b"
+      },
+      "phases": {
+        "quick": {
+          "model": "google/gemma-3-27b-it",
+          "skipped": false,
+          "completed": true,
+          "durationMs": 8978,
+          "httpStatus": 200,
+          "finishReason": "stop",
+          "promptTokens": 638,
+          "completionTokens": 215,
+          "estimatedCostUsd": 0.00016894,
+          "pricing": {
+            "model": "google/gemma-3-27b-it",
+            "promptPerMillionUsd": 0.13,
+            "completionPerMillionUsd": 0.4,
+            "verified": false,
+            "source": "baseline histórico del evaluador; la tarifa vigente debe verificarse antes de atribuir facturación real"
+          }
+        },
+        "detail": {
+          "model": "openai/gpt-oss-120b",
+          "skipped": false,
+          "completed": true,
+          "durationMs": 9612,
+          "httpStatus": 200,
+          "finishReason": "stop",
+          "promptTokens": 397,
+          "completionTokens": 1857,
+          "estimatedCostUsd": 0.00117375,
+          "pricing": {
+            "model": "openai/gpt-oss-120b",
+            "promptPerMillionUsd": 0.15,
+            "completionPerMillionUsd": 0.6,
+            "verified": false,
+            "source": "https://nebius.com/token-factory/prices (base; referencia consultada 2026-09-13, confirmar antes de atribuir facturación real)"
+          }
+        }
+      },
+      "quickMs": 8978,
+      "detailMs": 9612,
+      "durationMs": 18590,
+      "promptTokens": 1035,
+      "completionTokens": 2072,
+      "estimatedCostUsd": 0.0013426900000000001,
+      "error": null,
+      "assessment": {
+        "schemaValid": true,
+        "schemaIssues": [],
+        "checks": [
+          {
+            "name": "Regla dura · no-schema-leak",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-markup",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-shouting",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hook-is-one-action",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hook-not-empty",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-schema-leak",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-markup",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-shouting",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · micro-steps-present",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · step-budget",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · decomposition-budget",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · first-step-startable",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · sequence-numbered",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hooks-concrete",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · grounded-has-source",
+            "passed": true
+          },
+          {
+            "name": "Hook de activación no vacío",
+            "passed": true
+          },
+          {
+            "name": "Escudo de foco no vacío",
+            "passed": true
+          },
+          {
+            "name": "Secuencia numerada 1..N con tarea y razón no vacías",
+            "passed": true
+          },
+          {
+            "name": "El primer paso no depende de nada pendiente",
+            "passed": true
+          }
+        ],
+        "passed": true,
+        "output": {
+          "trayDispatch": {
+            "personalBienestar": [],
+            "profesionalProductiva": [
+              "pedir credenciales a Juan",
+              "correr migraciones en staging",
+              "avisar al equipo por Slack"
+            ],
+            "familiarDomestica": [],
+            "socialComunitaria": []
+          },
+          "momentumMode": {
+            "activationHook": "bebe un vaso de agua y respira hondo 3 veces.",
+            "cognitiveLoadLevel": "baja",
+            "antiDopamineTraps": [
+              {
+                "activity": "revisar slack sin contestar",
+                "warning": "es fácil caer en scroll infinito"
+              },
+              {
+                "activity": "pensar en todo lo que puede salir mal",
+                "warning": "anticipar el caos no lo evita"
+              }
+            ],
+            "singleFocusShield": "solo enfócate en pedir las credenciales a Juan."
+          },
+          "dependencyOrder": [
+            {
+              "step": 1,
+              "task": "Avisar al equipo por Slack",
+              "dependsOn": [],
+              "whyThisOrder": "Puede hacerse de inmediato y desbloquea la siguiente fase."
+            },
+            {
+              "step": 2,
+              "task": "Pedir credenciales a Juan",
+              "dependsOn": [],
+              "whyThisOrder": "Necesario antes de ejecutar migraciones."
+            },
+            {
+              "step": 3,
+              "task": "Correr migraciones en staging",
+              "dependsOn": [
+                "Avisar al equipo por Slack",
+                "Pedir credenciales a Juan"
+              ],
+              "whyThisOrder": "Requiere tanto la notificación al equipo como las credenciales."
+            },
+            {
+              "step": 4,
+              "task": "Desplegar nueva versión a producción",
+              "dependsOn": [
+                "Correr migraciones en staging"
+              ],
+              "whyThisOrder": "Sólo se puede hacer una vez que las migraciones en staging hayan finalizado con éxito."
+            }
+          ],
+          "microTasks": [
+            {
+              "originalTask": "Avisar al equipo por Slack",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir Slack",
+                  "durationMinutes": 2,
+                  "actionableHook": "Haz clic en el icono de Slack en la barra de tareas para abrir la aplicación."
+                },
+                {
+                  "stepTitle": "Enviar mensaje de aviso",
+                  "durationMinutes": 3,
+                  "actionableHook": "En el canal #general escribe y envía: \"Voy a correr migraciones en staging, avisen cualquier incidencia\"."
+                }
+              ]
+            },
+            {
+              "originalTask": "Pedir credenciales a Juan",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir chat con Juan",
+                  "durationMinutes": 2,
+                  "actionableHook": "Abre la conversación con Juan en Slack (o Teams) haciendo clic en su nombre."
+                },
+                {
+                  "stepTitle": "Solicitar credenciales",
+                  "durationMinutes": 3,
+                  "actionableHook": "Escribe y envía: \"Juan, ¿me puedes pasar las credenciales de staging? Gracias\"."
+                }
+              ]
+            },
+            {
+              "originalTask": "Correr migraciones en staging",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Preparar terminal",
+                  "durationMinutes": 2,
+                  "actionableHook": "Abre una ventana de terminal y navega al directorio del proyecto con `cd /ruta/al/proyecto`."
+                },
+                {
+                  "stepTitle": "Ejecutar migraciones",
+                  "durationMinutes": 5,
+                  "actionableHook": "Ejecuta el comando de migración, por ejemplo `npm run migrate:staging` usando las credenciales recibidas."
+                }
+              ]
+            }
+          ]
+        },
+        "humanReview": [
+          "Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías).",
+          "Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada."
+        ]
+      },
+      "success": true
+    },
+    {
+      "id": "case-04-microtask-breakdown",
+      "name": "Caso 4: Tarea monstruo que requiere micro-pasos",
+      "models": {
+        "quick": "google/gemma-3-27b-it",
+        "detail": "openai/gpt-oss-120b"
+      },
+      "phases": {
+        "quick": {
+          "model": "google/gemma-3-27b-it",
+          "skipped": false,
+          "completed": true,
+          "durationMs": 6480,
+          "httpStatus": 200,
+          "finishReason": "stop",
+          "promptTokens": 618,
+          "completionTokens": 210,
+          "estimatedCostUsd": 0.00016434000000000002,
+          "pricing": {
+            "model": "google/gemma-3-27b-it",
+            "promptPerMillionUsd": 0.13,
+            "completionPerMillionUsd": 0.4,
+            "verified": false,
+            "source": "baseline histórico del evaluador; la tarifa vigente debe verificarse antes de atribuir facturación real"
+          }
+        },
+        "detail": {
+          "model": "openai/gpt-oss-120b",
+          "skipped": false,
+          "completed": true,
+          "durationMs": 7170,
+          "httpStatus": 200,
+          "finishReason": "stop",
+          "promptTokens": 376,
+          "completionTokens": 1405,
+          "estimatedCostUsd": 0.0008994,
+          "pricing": {
+            "model": "openai/gpt-oss-120b",
+            "promptPerMillionUsd": 0.15,
+            "completionPerMillionUsd": 0.6,
+            "verified": false,
+            "source": "https://nebius.com/token-factory/prices (base; referencia consultada 2026-09-13, confirmar antes de atribuir facturación real)"
+          }
+        }
+      },
+      "quickMs": 6480,
+      "detailMs": 7170,
+      "durationMs": 13650,
+      "promptTokens": 994,
+      "completionTokens": 1615,
+      "estimatedCostUsd": 0.00106374,
+      "error": null,
+      "assessment": {
+        "schemaValid": true,
+        "schemaIssues": [],
+        "checks": [
+          {
+            "name": "Regla dura · no-schema-leak",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-markup",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-shouting",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hook-is-one-action",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hook-not-empty",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-schema-leak",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-markup",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-shouting",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · micro-steps-present",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · step-budget",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · decomposition-budget",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · first-step-startable",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · sequence-numbered",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hooks-concrete",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · grounded-has-source",
+            "passed": true
+          },
+          {
+            "name": "Hook de activación no vacío",
+            "passed": true
+          },
+          {
+            "name": "Escudo de foco no vacío",
+            "passed": true
+          },
+          {
+            "name": "Micro-tareas y pasos no vacíos",
+            "passed": true
+          },
+          {
+            "name": "Micro-pasos de 2 a 10 minutos",
+            "passed": true
+          },
+          {
+            "name": "Cada micro-paso tiene título y hook (proxy estructural)",
+            "passed": true
+          }
+        ],
+        "passed": true,
+        "output": {
+          "trayDispatch": {
+            "personalBienestar": [],
+            "profesionalProductiva": [
+              "Organizar facturas y documentos de los últimos tres meses.",
+              "Completar la declaración mensual de impuestos."
+            ],
+            "familiarDomestica": [
+              "Ordenar el cuarto."
+            ],
+            "socialComunitaria": []
+          },
+          "momentumMode": {
+            "activationHook": "bebe un vaso de agua y pon una canción que te guste.",
+            "cognitiveLoadLevel": "alta",
+            "antiDopamineTraps": [
+              {
+                "activity": "ver videos en youtube",
+                "warning": "distracción fácil, no avanza la tarea"
+              },
+              {
+                "activity": "limpiar el cuarto",
+                "warning": "procrastinación disfrazada de productividad"
+              }
+            ],
+            "singleFocusShield": "solo trabaja en organizar las facturas durante 5 minutos."
+          },
+          "dependencyOrder": [
+            {
+              "step": 1,
+              "task": "Reunir documentos financieros de los últimos tres meses",
+              "dependsOn": [],
+              "whyThisOrder": "Necesitas los datos antes de poder registrarlos."
+            },
+            {
+              "step": 2,
+              "task": "Registrar ingresos y gastos en la hoja de contabilidad",
+              "dependsOn": [
+                "Reunir documentos financieros de los últimos tres meses"
+              ],
+              "whyThisOrder": "Solo puedes contabilizar lo que ya tienes reunido."
+            },
+            {
+              "step": 3,
+              "task": "Generar y presentar la declaración de impuestos",
+              "dependsOn": [
+                "Registrar ingresos y gastos en la hoja de contabilidad"
+              ],
+              "whyThisOrder": "La declaración se basa en la contabilidad ya completada."
+            }
+          ],
+          "microTasks": [
+            {
+              "originalTask": "Reunir documentos financieros de los últimos tres meses",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir la carpeta de facturas en el escritorio",
+                  "durationMinutes": 2,
+                  "actionableHook": "Haz doble clic en la carpeta llamada 'Facturas' que está en tu escritorio."
+                },
+                {
+                  "stepTitle": "Descargar extractos bancarios de los últimos tres meses",
+                  "durationMinutes": 5,
+                  "actionableHook": "Inicia sesión en tu banco, ve a la sección de extractos y descarga los PDFs de los últimos tres meses."
+                },
+                {
+                  "stepTitle": "Reunir recibos físicos y colocarlos en una pila",
+                  "durationMinutes": 3,
+                  "actionableHook": "Abre el cajón donde guardas los recibos y pon todos los de los últimos tres meses sobre la mesa."
+                }
+              ]
+            },
+            {
+              "originalTask": "Registrar ingresos y gastos en la hoja de contabilidad",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Crear una hoja de cálculo nueva para el periodo",
+                  "durationMinutes": 2,
+                  "actionableHook": "Abre Excel (o Google Sheets) y crea un nuevo libro titulado 'Contabilidad Q3‑2026'."
+                },
+                {
+                  "stepTitle": "Ingresar los ingresos del primer mes",
+                  "durationMinutes": 5,
+                  "actionableHook": "Abre el PDF del extracto bancario de octubre y escribe cada ingreso en la columna 'Ingresos' de la hoja."
+                },
+                {
+                  "stepTitle": "Ingresar los gastos del primer mes",
+                  "durationMinutes": 5,
+                  "actionableHook": "Toma la pila de recibos de octubre y registra cada gasto en la columna 'Gastos' correspondiente."
+                }
+              ]
+            },
+            {
+              "originalTask": "Generar y presentar la declaración de impuestos",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir el programa o portal de declaración de impuestos",
+                  "durationMinutes": 2,
+                  "actionableHook": "Inicia sesión en la página de la Agencia Tributaria y selecciona 'Declaración mensual'."
+                },
+                {
+                  "stepTitle": "Copiar totales de ingresos y gastos a la declaración",
+                  "durationMinutes": 5,
+                  "actionableHook": "En la hoja de cálculo, copia los totales de ingresos y gastos y pégalos en los campos correspondientes del formulario online."
+                },
+                {
+                  "stepTitle": "Revisar y enviar la declaración",
+                  "durationMinutes": 5,
+                  "actionableHook": "Haz clic en 'Revisar' para validar los datos y, si todo está correcto, pulsa 'Enviar'."
+                }
+              ]
+            }
+          ]
+        },
+        "humanReview": [
+          "Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías).",
+          "Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada."
+        ]
+      },
+      "success": true
+    },
+    {
+      "id": "case-05-struggle-case-burnout",
+      "name": "Caso 5: Caso de dificultad — colapso sensorial vs. deber externo",
+      "models": {
+        "quick": "google/gemma-3-27b-it",
+        "detail": "openai/gpt-oss-120b"
+      },
+      "phases": {
+        "quick": {
+          "model": "google/gemma-3-27b-it",
+          "skipped": false,
+          "completed": true,
+          "durationMs": 7906,
+          "httpStatus": 200,
+          "finishReason": "stop",
+          "promptTokens": 646,
+          "completionTokens": 222,
+          "estimatedCostUsd": 0.00017278000000000004,
+          "pricing": {
+            "model": "google/gemma-3-27b-it",
+            "promptPerMillionUsd": 0.13,
+            "completionPerMillionUsd": 0.4,
+            "verified": false,
+            "source": "baseline histórico del evaluador; la tarifa vigente debe verificarse antes de atribuir facturación real"
+          }
+        },
+        "detail": {
+          "model": "openai/gpt-oss-120b",
+          "skipped": false,
+          "completed": true,
+          "durationMs": 8207,
+          "httpStatus": 200,
+          "finishReason": "stop",
+          "promptTokens": 400,
+          "completionTokens": 1478,
+          "estimatedCostUsd": 0.0009467999999999999,
+          "pricing": {
+            "model": "openai/gpt-oss-120b",
+            "promptPerMillionUsd": 0.15,
+            "completionPerMillionUsd": 0.6,
+            "verified": false,
+            "source": "https://nebius.com/token-factory/prices (base; referencia consultada 2026-09-13, confirmar antes de atribuir facturación real)"
+          }
+        }
+      },
+      "quickMs": 7906,
+      "detailMs": 8207,
+      "durationMs": 16113,
+      "promptTokens": 1046,
+      "completionTokens": 1700,
+      "estimatedCostUsd": 0.00111958,
+      "error": null,
+      "assessment": {
+        "schemaValid": true,
+        "schemaIssues": [],
+        "checks": [
+          {
+            "name": "Regla dura · somatic-override",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-schema-leak",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-markup",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-shouting",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hook-is-one-action",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hook-not-empty",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-schema-leak",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-markup",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · no-shouting",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · micro-steps-present",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · step-budget",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · decomposition-budget",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · first-step-startable",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · sequence-numbered",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · hooks-concrete",
+            "passed": true
+          },
+          {
+            "name": "Regla dura · grounded-has-source",
+            "passed": true
+          },
+          {
+            "name": "Hook de activación no vacío",
+            "passed": true
+          },
+          {
+            "name": "Escudo de foco no vacío",
+            "passed": true
+          }
+        ],
+        "passed": true,
+        "output": {
+          "trayDispatch": {
+            "personalBienestar": [
+              "Realizar 5 respiraciones profundas y lentas"
+            ],
+            "profesionalProductiva": [
+              "Redactar borrador del reporte de ventas (30 minutos)"
+            ],
+            "familiarDomestica": [],
+            "socialComunitaria": [
+              "Investigar sobre acuarios marinos (15 minutos)"
+            ]
+          },
+          "momentumMode": {
+            "activationHook": "bebe un vaso de agua y cuenta hasta diez.",
+            "cognitiveLoadLevel": "alta",
+            "antiDopamineTraps": [
+              {
+                "activity": "investigar acuarios marinos",
+                "warning": "es fácil perderse en la investigación y no avanzar en lo urgente. limita el tiempo."
+              }
+            ],
+            "singleFocusShield": "reporte de ventas: solo eso, por ahora."
+          },
+          "dependencyOrder": [
+            {
+              "step": 1,
+              "task": "Reunir datos de ventas",
+              "dependsOn": [],
+              "whyThisOrder": "Necesario para poder redactar el reporte."
+            },
+            {
+              "step": 2,
+              "task": "Redactar reporte de ventas",
+              "dependsOn": [
+                "Reunir datos de ventas"
+              ],
+              "whyThisOrder": "Requiere la información recopilada."
+            },
+            {
+              "step": 3,
+              "task": "Revisar y enviar reporte de ventas",
+              "dependsOn": [
+                "Redactar reporte de ventas"
+              ],
+              "whyThisOrder": "Sólo se puede revisar y enviar una vez escrito."
+            },
+            {
+              "step": 4,
+              "task": "Investigar acuarios marinos",
+              "dependsOn": [
+                "Revisar y enviar reporte de ventas"
+              ],
+              "whyThisOrder": "Se puede posponer hasta que el reporte crítico esté entregado."
+            }
+          ],
+          "microTasks": [
+            {
+              "originalTask": "Reunir datos de ventas",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Abrir hoja de cálculo y copiar datos de ventas del último mes",
+                  "durationMinutes": 5,
+                  "actionableHook": "Haz clic en el icono de Excel en tu escritorio y abre el archivo 'Ventas_2026.xlsx'."
+                },
+                {
+                  "stepTitle": "Seleccionar y copiar la tabla de ventas del último mes",
+                  "durationMinutes": 3,
+                  "actionableHook": "Selecciona la tabla con el mouse y pulsa Ctrl + C."
+                }
+              ]
+            },
+            {
+              "originalTask": "Redactar reporte de ventas",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Crear documento nuevo y pegar datos",
+                  "durationMinutes": 4,
+                  "actionableHook": "Abre Word (o Google Docs) y crea un documento llamado 'ReporteVentas_14Sep2026'."
+                },
+                {
+                  "stepTitle": "Escribir resumen ejecutivo (2‑5 min)",
+                  "durationMinutes": 5,
+                  "actionableHook": "Escribe la frase 'Resumen ejecutivo:' y redacta 3‑4 líneas clave."
+                }
+              ]
+            },
+            {
+              "originalTask": "Revisar y enviar reporte de ventas",
+              "atomicSteps": [
+                {
+                  "stepTitle": "Revisar ortografía y formato",
+                  "durationMinutes": 3,
+                  "actionableHook": "Pulsa F7 (o usa la herramienta de revisión) en el documento abierto."
+                },
+                {
+                  "stepTitle": "Adjuntar y enviar por email",
+                  "durationMinutes": 4,
+                  "actionableHook": "Abre tu cliente de correo, redacta un nuevo mensaje a 'jefe@empresa.com', adjunta el documento y pulsa Enviar."
+                }
+              ]
+            }
+          ]
+        },
+        "humanReview": [
+          "Clasificación semántica real de cada ítem (esto solo confirma que las listas no están vacías).",
+          "Utilidad y tono percibidos por una persona real; eficacia clínica no evaluada.",
+          "Caso de dificultad: la regla somatic-override se comprueba abajo; lo que queda a revisión humana es si la acción propuesta es adecuada para esta persona, no si regula el cuerpo."
+        ]
+      },
+      "success": true
+    }
+  ]
+}
