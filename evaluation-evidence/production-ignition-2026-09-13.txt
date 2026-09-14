@@ -1,0 +1,62 @@
+DOMI — Encendido de producción y prueba detenida
+Fecha: 2026-09-13. Horas del panel Render: CST (UTC-6).
+Commit de ambos servicios: 068f08c0c163f3653a687e2bf39be683ee2a4912
+
+TRABAJADOR
+DOMI_ADMISSION_ENABLED=true guardado con Save, rebuild, and register.
+Render confirmó Deploy ready antes de activar la web.
+Versión: wfv-dajjhlm7bikc73cajekg
+https://dashboard.render.com/wf/wfl-dailmpgjo6nc73fe6dng/versions/wfv-dajjhlm7bikc73cajekg
+
+Logs completos mostrados por Render para el build y registro del trabajador:
+05:59:20 PM ==> Downloading cache...
+05:59:20 PM ==> Cloning from https://github.com/ricardomartinezsau-jpg/domi-nebius
+05:59:26 PM ==> Checking out commit 068f08c0c163f3653a687e2bf39be683ee2a4912 in branch main
+05:59:31 PM ==> Downloaded 266MB in 7s. Extraction took 4s.
+05:59:32 PM ==> Using Node.js version 24.14.1 (default)
+05:59:32 PM ==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+05:59:32 PM ==> Running build command 'npm install'...
+05:59:33 PM
+05:59:33 PM up to date, audited 91 packages in 399ms
+05:59:33 PM
+05:59:33 PM 11 packages are looking for funding
+05:59:33 PM   run `npm fund` for details
+05:59:33 PM
+05:59:33 PM found 0 vulnerabilities
+05:59:34 PM ==> Uploading build...
+05:59:41 PM ==> Uploaded in 5.0s. Compression took 1.6s
+05:59:41 PM ==> Build successful 🎉
+05:59:54 PM ==> Registering your tasks...
+05:59:54 PM ==> Running "npm run start:workflows"
+05:59:54 PM
+05:59:54 PM > domi-nebius@0.1.0 start:workflows
+05:59:54 PM > node tools/workflows-server.mjs
+05:59:54 PM
+05:59:54 PM (node:48) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///opt/render/project/src/lib/workflows.ts is not specified and it doesn't parse as CommonJS.
+05:59:54 PM Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+05:59:54 PM To eliminate this warning, add "type": "module" to /opt/render/project/src/package.json.
+05:59:54 PM (Use `node --trace-warnings ...` to show where the warning was created)
+05:59:54 PM [workflows] tareas declaradas · en Render: sí · modo register · modelo de investigación: openai/gpt-oss-120b (por defecto)
+05:59:54 PM [workflows] base de datos: alcanzable en 24 ms · dpg-dai8vn8ae00c73dmse40-a/domi_h7wr · sin TLS
+
+WEB
+DOMI_ADMISSION_ENABLED=true guardado con Save and deploy después de Deploy ready del trabajador.
+Deploy: dep-dajjiap594qs73cetft0
+https://dashboard.render.com/web/srv-dailiq7qj5pc73ak88t0/deploys/dep-dajjiap594qs73cetft0
+Estado verificado: Deploy succeeded | Live. Duración: 30.6 s.
+06:01:16 PM ==> Your service is live 🎉
+
+PRUEBA
+La primera conexión local fue bloqueada por permisos de socket antes de contactar producción.
+Al permitir acceso de red, POST /api/guest devolvió HTTP 503.
+Se detuvo la secuencia antes de POST /api/research. No se creó ninguna investigación ni se lanzó ninguna tarea de Workflows para esta prueba. No hubo reintentos de la petición rechazada por producción.
+
+Respuesta final recibida:
+{"error":"El servicio no está disponible en este momento.","code":"ORIGIN_CONFIGURATION","requestId":"42de4aa0-b613-48bc-9069-430fe19e9309"}
+
+Log correlacionado de la web:
+06:02:33 PM [5rj2t] {"event":"guest.bootstrap","requestId":"42de4aa0-b613-48bc-9069-430fe19e9309","kind":"PolicyError","code":"ORIGIN_CONFIGURATION","status":503}
+
+Interpretación limitada al código y al error observado: lib/guest.ts, mutationBody, rechaza la configuración de BETTER_AUTH_URL si no puede interpretarse como URL o si su origen no es HTTPS en producción. El valor vivo de esa variable no se inspeccionó ni modificó en esta prueba.
+No existe resultado de investigación ni logs de ejecución de investigación del trabajador, porque el fallo ocurrió antes de crearla. Linkup y la ejecución de tareas Render Workflows no quedaron validados por esta prueba.
+Ambos servicios quedan con admisión habilitada. No se modificó código fuente ni se ejecutó evaluación de pago.

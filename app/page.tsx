@@ -1,5 +1,6 @@
 import { DomiApp } from '@/components/domi-app'
+import { LocaleProvider } from '@/components/locale'
 
 export default function Home() {
-  return <DomiApp />
+  return <LocaleProvider><DomiApp /></LocaleProvider>
 }

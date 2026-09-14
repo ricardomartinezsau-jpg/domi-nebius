@@ -1,4 +1,5 @@
 'use client'
+import { useLocale } from './locale'
 
 import { Check, ArrowRight } from 'lucide-react'
 import { useResearch } from './use-research'
@@ -12,14 +13,15 @@ export function ResearchBadge({
   title?: string
   onOpen: () => void 
 }) {
+  const { locale, t } = useLocale()
   const { view, error } = useResearch(runId)
 
   // Estado con error técnico
   if (error || view?.status === 'failed') {
     return (
       <button type="button" className="research-tray-badge is-failed" onClick={onOpen}>
-        <span className="failed-title">Investigación pausada</span>
-        <span className="failed-note">Toca para revisar el estado</span>
+        <span className="failed-title">{t("Investigación pausada")}</span>
+        <span className="failed-note">{t("Toca para revisar el estado")}</span>
       </button>
     )
   }
@@ -33,19 +35,19 @@ export function ResearchBadge({
         type="button" 
         className="research-tray-badge is-done" 
         onClick={onOpen}
-        title="Ver guía fundamentada y fuentes de la investigación"
+        title={t("Ver guía fundamentada y fuentes de la investigación")}
       >
         <div className="done-header">
           <div className="done-tag-group">
             <span className="done-badge-check" aria-hidden="true"><Check size={11} strokeWidth={3} /></span>
-            <span className="done-title">Investigación lista para revisión</span>
+            <span className="done-title">{t("Investigación lista para revisión")}</span>
           </div>
-          <span className="done-arrow" aria-hidden="true">Abrir <ArrowRight size={13} style={{ display: 'inline', verticalAlign: '-1px' }} /></span>
+          <span className="done-arrow" aria-hidden="true">{t("Abrir")} <ArrowRight size={13} style={{ display: 'inline', verticalAlign: '-1px' }} /></span>
         </div>
         <p className="done-summary">
           {title ? `«${title.slice(0, 32)}${title.length > 32 ? '…' : ''}»: ` : ''}
-          {stepsCount > 0 ? `${stepsCount} pasos fundamentados` : 'Hallazgos listos'}
-          {hasDisagreement ? ' · 1 contradicción detectada' : ''}
+          {stepsCount > 0 ? `${stepsCount} ${stepsCount === 1 ? t("paso fundamentado") : t("pasos fundamentados")}` : t("Hallazgos listos")}
+          {hasDisagreement ? t(" · 1 contradicción detectada") : ''}
         </p>
       </button>
     )
@@ -60,13 +62,11 @@ export function ResearchBadge({
             <div className="ink-pulse-halo" />
             <div className="ink-pulse-core" />
           </div>
-          <span className="processing-title">Averiguando fuentes con Linkup</span>
+          <span className="processing-title">{t("Averiguando fuentes con Linkup")}</span>
         </div>
         <span className="processing-time-pill">~20s</span>
       </div>
-      <p className="processing-calm-note">
-        Puedes seguir ordenando tareas o salir. Al terminar te avisamos aquí.
-      </p>
+      <p className="processing-calm-note"> {t("Puedes seguir ordenando tareas o salir. Al terminar te avisamos aquí.")} </p>
       <div className="ink-progress-track" aria-hidden="true">
         <div className="ink-progress-bar" />
       </div>

@@ -712,3 +712,7 @@ kbd { padding:2px 5px; border:1px solid #252a341f; border-radius:4px; font:inher
   gap: 6px;
 }
 
+.language-bar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; max-width: 1120px; margin: 0 auto; padding: 12px 24px 0; font-size: 13.5px; color: #6E6E66; }
+.language-bar select { font: inherit; color: #252A34; background: #F5F5EF; border: 1px solid #b8b8ae; border-radius: 8px; padding: 6px 10px; min-height: 38px; cursor: pointer; }
+.language-bar select:focus { border-color: #252A34; outline: none; box-shadow: 0 0 0 2px rgba(37,42,52,0.1); }
+

@@ -1,4 +1,5 @@
 'use client'
+import { useLocale } from './locale'
 import { guestFetch } from '@/lib/guest-client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -29,6 +30,7 @@ function fieldCapacity(pills: string[]) {
 
 /** Production version of Antigravity's screen 01; no simulated speech or fake results. */
 export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Props) {
+  const { locale, t } = useLocale()
   const [text, setText] = useState(initialText.slice(0, MAX_LENGTH))
   const [pills, setPills] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
@@ -70,33 +72,45 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
     if (speech.current) { stop(); return }
     const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition
     if (!Recognition) { setSupported(false); return }
-    if (!window.isSecureContext) { setError('El dictado necesita HTTPS o localhost. Puedes escribir tu lista.'); return }
+    if (!window.isSecureContext) { setError(t("El dictado necesita HTTPS o localhost. Puedes escribir tu lista.")); return }
     setError('')
     setHint('')
     const base = textRef.current.trim()
     try {
       const recognition = new Recognition()
       speech.current = recognition
-      recognition.lang = 'es-MX'
+      recognition.lang = locale === 'en' ? 'en-US' : 'es-MX'
       recognition.continuous = true
       recognition.interimResults = true
       recognition.onstart = () => setListening(true)
       recognition.onresult = (event) => {
-        const phrases: string[] = []
-        for (let i = 0; i < event.results.length; i++) phrases.push(event.results[i][0].transcript)
-        const next = `${base}${base ? '\n' : ''}${phrases.join(' ').trim()}`.slice(0, fieldCapacity(pillsRef.current))
+        let sessionText = ''
+        for (let i = 0; i < event.results.length; i++) {
+          const chunk = event.results[i][0].transcript.trim()
+          if (!chunk) continue
+          
+          const cleanSession = sessionText.replace(/\s+/g, '').toLowerCase()
+          const cleanChunk = chunk.replace(/\s+/g, '').toLowerCase()
+          
+          if (cleanSession && cleanChunk.startsWith(cleanSession)) {
+            sessionText = chunk
+          } else {
+            sessionText = sessionText ? `${sessionText} ${chunk}` : chunk
+          }
+        }
+        const next = `${base}${base ? '\n' : ''}${sessionText}`.slice(0, fieldCapacity(pillsRef.current))
         textRef.current = next
         setText(next)
       }
       recognition.onerror = (event) => {
-        if (event.error === 'not-allowed') setError('No se habilitó el micrófono. Puedes seguir escribiendo.')
-        else if (event.error !== 'aborted' && event.error !== 'no-speech') setError('No se pudo continuar el dictado. Lo escrito sigue aquí.')
+        if (event.error === 'not-allowed') setError(t("No se habilitó el micrófono. Puedes seguir escribiendo."))
+        else if (event.error !== 'aborted' && event.error !== 'no-speech') setError(t("No se pudo continuar el dictado. Lo escrito sigue aquí."))
         stop()
       }
       recognition.onend = () => { if (speech.current === recognition) { speech.current = null; setListening(false) } }
       // Must stay synchronous inside the gesture: awaiting a permission probe breaks mobile speech.
       recognition.start()
-    } catch { stop(); setError('No se pudo abrir el micrófono. Puedes escribir tu lista.') }
+    } catch { stop(); setError(t("No se pudo abrir el micrófono. Puedes escribir tu lista.")) }
   }
 
   function removePill(indexToRemove: number) {
@@ -114,7 +128,7 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
       const next = [...pillsRef.current, suggestion]
       // Never discard an existing thought to make room for a suggestion.
       if (textRef.current.length > fieldCapacity(next)) {
-        setHint('Tu texto sigue completo. Para añadir esta sugerencia, deja un poco de espacio o continúa con lo escrito.')
+        setHint(t("Tu texto sigue completo. Para añadir esta sugerencia, deja un poco de espacio o continúa con lo escrito."))
         field.current?.focus()
         return
       }
@@ -129,7 +143,7 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
     event.preventDefault()
     if (sending.current) return
     const raw = composeText(pillsRef.current, textRef.current).slice(0, MAX_LENGTH)
-    if (!raw) { setHint('Puedes empezar con un solo pendiente.'); field.current?.focus(); return }
+    if (!raw) { setHint(t("Puedes empezar con un solo pendiente.")); field.current?.focus(); return }
     stop()
     sending.current = true
     setBusy(true)
@@ -139,43 +153,43 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
     request.current = controller
     const timeout = setTimeout(() => controller.abort(), 135_000)
     try {
-      const response = await guestFetch('/api/triage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: 'quick', rawDump: raw, locale: 'es' }), signal: controller.signal })
+      const response = await guestFetch('/api/triage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phase: 'quick', rawDump: raw, locale }), signal: controller.signal })
       const data = await response.json()
       if (!response.ok) throw new Error('triage failed')
       const parsed = quickResultSchema.safeParse(data.output)
       if (!parsed.success) throw new Error('invalid quick output')
       onResult(parsed.data, raw)
-    } catch { setError('No llegó una respuesta completa. Tu lista sigue aquí; puedes intentarlo otra vez.') }
+    } catch { setError(t("No llegó una respuesta completa. Tu lista sigue aquí; puedes intentarlo otra vez.")) }
     finally { clearTimeout(timeout); sending.current = false; setBusy(false) }
   }
 
   return <div className="domi-shell capture-shell">
     <header className="domi-header">
       <Brand />
-      {hasTasks ? <button className="quiet" onClick={onBack} disabled={busy}>Mis pendientes</button> : <span className="capture-badge">La mesa libre</span>}
+      {hasTasks ? <button className="quiet" onClick={onBack} disabled={busy}>{t("Mis pendientes")}</button> : <span className="capture-badge">{t("La mesa libre")}</span>}
     </header>
     <main className="capture-main">
       <form onSubmit={submit} aria-labelledby="capture-title">
-        <h1 id="capture-title">Suelta lo que traes<br />en la cabeza.</h1>
-        <p className="intro">Escríbelo o cuéntamelo como te salga. Sin orden, sin juzgar; luego decidimos qué merece espacio.</p>
+        <h1 id="capture-title">{t("Suelta lo que traes")}<br />{t("en la cabeza.")}</h1>
+        <p className="intro">{t("Escríbelo o cuéntamelo como te salga. Sin orden, sin juzgar; luego decidimos qué merece espacio.")}</p>
 
-        <div className="domi-prompts-bar" aria-label="Sugerencias rápidas">
+        <div className="domi-prompts-bar" aria-label={t("Sugerencias rápidas")}>
           {SUGGESTIONS.map(({ label, text: suggestion, icon: Icon }) => (
-            <button key={suggestion} type="button" className="domi-chip" disabled={busy || listening} aria-pressed={pills.includes(suggestion)} onClick={() => addPill(suggestion)}>
-              <Icon size={12} aria-hidden="true" /> {label}
+            <button key={suggestion} type="button" className="domi-chip" disabled={busy || listening} aria-pressed={pills.includes(t(suggestion))} onClick={() => addPill(t(suggestion))}>
+              <Icon size={12} aria-hidden="true" /> {t(label)}
             </button>
           ))}
         </div>
 
         <div className="capture-canvas">
           <div className="capture-input-wrap">
-            <label className="capture-label" htmlFor="capture-text">¿Qué tienes en la cabeza?</label>
+            <label className="capture-label" htmlFor="capture-text">{t("¿Qué tienes en la cabeza?")}</label>
             {pills.length > 0 && (
-              <div className="domi-input-pills-container" aria-label="Sugerencias activas">
+              <div className="domi-input-pills-container" aria-label={t("Sugerencias activas")}>
                 {pills.map((pill, index) => (
                   <span key={pill} className="domi-input-pill">
                     <span className="domi-input-pill-text">{pill}</span>
-                    <button type="button" className="domi-pill-remove-btn" disabled={busy || listening} onClick={() => removePill(index)} aria-label={`Eliminar sugerencia ${pill}`} title="Eliminar sugerencia">
+                    <button type="button" className="domi-pill-remove-btn" disabled={busy || listening} onClick={() => removePill(index)} aria-label={`${t("Eliminar sugerencia")} ${pill}`} title={t("Eliminar sugerencia")}>
                       <X size={12} aria-hidden="true" />
                     </button>
                   </span>
@@ -190,7 +204,7 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
               maxLength={maxTextLength}
               disabled={busy}
               readOnly={listening}
-              placeholder={pills.length > 0 ? 'Continúa tu pensamiento aquí...' : '¿Qué tienes en la cabeza? Deja caer tareas, compromisos o pensamientos sueltos...'}
+              placeholder={pills.length > 0 ? t("Continúa tu pensamiento aquí...") : t("¿Qué tienes en la cabeza? Deja caer tareas, compromisos o pensamientos sueltos...")}
               aria-describedby="capture-help"
               onChange={event => { const next = event.target.value.slice(0, maxTextLength); textRef.current = next; setText(next); setError(''); setHint('') }}
               onKeyDown={event => {
@@ -207,16 +221,16 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
                 {[0, 1, 2, 3, 4, 5, 6].map(i => <i key={i} style={{ animationDelay: `${i * -0.15}s` }} />)}
               </span>
               <div className="voice-text">
-                <strong>Escuchando con calma…</strong>
-                <small>Habla a tu propio ritmo. Sin prisas.</small>
+                <strong>{t("Escuchando con calma…")}</strong>
+                <small>{t("Habla a tu propio ritmo. Sin prisas.")}</small>
               </div>
-              <button type="button" className="quiet" onClick={stop}>Listo</button>
+              <button type="button" className="quiet" onClick={stop}>{t("Listo")}</button>
             </div>
           )}
 
           <div className="capture-footer">
             <span id="capture-help" className="capture-reassurance" role="status">
-              {fullText.length > 80 ? <><Check size={15} aria-hidden="true" /><span><strong>{fullText.split(/\s+/).length} palabras</strong> · La mesa sostiene todo lo que pongas</span></> : fullText.length ? 'Sigue escribiendo sin ordenar. Domi te ayuda después.' : <><Clock size={15} aria-hidden="true" /><span>Tómate tu tiempo. No hay límite.</span></>}
+              {fullText.length > 80 ? <><Check size={15} aria-hidden="true" /><span><strong>{fullText.split(/\s+/).length} {t("palabras")}</strong> {t("· La mesa sostiene todo lo que pongas")}</span></> : fullText.length ? t("Sigue escribiendo sin ordenar. Domi te ayuda después.") : <><Clock size={15} aria-hidden="true" /><span>{t("Tómate tu tiempo. No hay límite.")}</span></>}
             </span>
             <span className="shortcut"><kbd>{modifier}</kbd> + <kbd>Enter</kbd></span>
           </div>
@@ -225,19 +239,19 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
         <div className="capture-actions">
           <button className="secondary" type="button" disabled={busy || !supported} onClick={speak} aria-pressed={listening}>
             {listening ? <Square size={18} /> : <Mic size={20} />}
-            {listening ? 'Terminar dictado' : 'Hablar'}
+            {listening ? t("Terminar dictado") : t("Hablar")}
           </button>
           <button className="primary" type="submit" disabled={busy}>
-            {busy ? 'Aclarando la mesa…' : <>Encontrar una cosa <ArrowRight size={18} /></>}
+            {busy ? t("Aclarando la mesa…") : <>{t("Encontrar una cosa")} <ArrowRight size={18} /></>}
           </button>
         </div>
 
-        {!supported && <p className="meta">El dictado no está disponible en este navegador. Puedes escribir.</p>}
-        {busy && <p className="loading-line" role="status">Domi está repartiendo tus pendientes en las cuatro bandejas…</p>}
+        {!supported && <p className="meta">{t("El dictado no está disponible en este navegador. Puedes escribir.")}</p>}
+        {busy && <p className="loading-line" role="status">{t("Domi está repartiendo tus pendientes en las cuatro bandejas…")}</p>}
         {hint && <p className="meta" role="status">{hint}</p>}
         {error && <p className="error" role="alert">{error}</p>}
       </form>
     </main>
-    <footer className="app-footer capture-manifesto"><span className="capture-footer-dot" aria-hidden="true" /><span>Primero alivio, después capacidad de actuar. Nunca examen.</span></footer>
+    <footer className="app-footer capture-manifesto"><span className="capture-footer-dot" aria-hidden="true" /><span>{t("Primero alivio, después capacidad de actuar. Nunca examen.")}</span></footer>
   </div>
 }

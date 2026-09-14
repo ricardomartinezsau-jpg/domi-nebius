@@ -1,4 +1,5 @@
 'use client'
+import { useLocale } from './locale'
 
 import { useRef } from 'react'
 import { ArrowRight, BriefcaseBusiness, Heart, House, Users, Check } from 'lucide-react'
@@ -9,6 +10,7 @@ import { useState } from 'react'
 import { createResearch } from '@/lib/guest-client'
 
 function TrayResearchInput({ tray, session, dispatch }: { tray: (typeof TRAYS)[number], session: DomiSession, dispatch: (action: SessionAction) => void }) {
+  const { locale, t } = useLocale()
   const [blocker, setBlocker] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -21,16 +23,16 @@ function TrayResearchInput({ tray, session, dispatch }: { tray: (typeof TRAYS)[n
     setSubmitting(true)
     setError(null)
     try {
-      const res = await createResearch({ contextArea: tray.color, blocker })
+      const res = await createResearch({ contextArea: tray.color, blocker, locale })
       const data = await res.json()
       if (typeof data.runId === 'string' && (res.ok || data.dispatchState === 'unknown' || data.dispatchState === 'rejected')) {
         dispatch({ type: 'trayResearch', tray: tray.id, runId: data.runId, title: blocker.trim() })
         setBlocker('')
       } else {
-        setError(data.error || 'Error al iniciar investigación')
+        setError(data.error || t("Error al iniciar investigación"))
       }
     } catch {
-      setError('Error de conexión')
+      setError(t("Error de conexión"))
     } finally {
       setSubmitting(false)
     }
@@ -46,9 +48,7 @@ function TrayResearchInput({ tray, session, dispatch }: { tray: (typeof TRAYS)[n
         />
       ) : (
         <form onSubmit={handleResearch} className="passive-input-wrap">
-          <label htmlFor={`research-input-${tray.id}`} className="passive-input-label">
-            ¿Algo te detiene en esta área?
-          </label>
+          <label htmlFor={`research-input-${tray.id}`} className="passive-input-label"> {t("¿Algo te detiene en esta área?")} </label>
           <div className="passive-input-group">
             <input 
               id={`research-input-${tray.id}`}
@@ -56,16 +56,16 @@ function TrayResearchInput({ tray, session, dispatch }: { tray: (typeof TRAYS)[n
               value={blocker}
               onChange={e => setBlocker(e.target.value)}
               disabled={submitting}
-              placeholder="Ej. ¿Cómo asigno una IP estática en Render?"
+              placeholder={t("Ej. ¿Cómo asigno una IP estática en Render?")}
               className="passive-input-field"
             />
             <button 
               type="submit" 
               disabled={!blocker.trim() || submitting} 
               className="passive-submit-btn"
-              title="Aclarar con investigación en segundo plano"
+              title={t("Aclarar con investigación en segundo plano")}
             >
-              <span>Aclarar</span>
+              <span>{t("Aclarar")}</span>
             </button>
           </div>
           {error && <p className="tray-research-error">{error}</p>}
@@ -79,6 +79,7 @@ type Props = { session: DomiSession; dispatch: (action: SessionAction) => void; 
 const icons = { trabajo: BriefcaseBusiness, personal: Heart, casa: House, social: Users }
 
 export function Trays({ session, dispatch, retryDetail }: Props) {
+  const { locale, t } = useLocale()
   const openTasks = session.tasks.filter(task => !task.done)
   const selected = openTasks.find(task => task.id === session.selectedTaskId) ?? openTasks[0]
   const start = (task: DomiTask) => dispatch({ type: 'start', taskId: task.id, runId: crypto.randomUUID(), now: Date.now() })
@@ -88,21 +89,21 @@ export function Trays({ session, dispatch, retryDetail }: Props) {
   const completed = session.tasks.filter(task => task.done)
 
   return <div className="domi-shell trays-shell">
-    <header className="domi-header"><Brand /><span className="badge">Tus bandejas</span></header>
+    <header className="domi-header"><Brand /><span className="badge">{t("Tus bandejas")}</span></header>
     <main>
-      <h1>Cada pendiente en su lugar.</h1>
-      <p className="intro">Puedes cambiar cualquiera de bandeja. Tú eliges por dónde empezar.</p>
-      {selected ? <section className="momentum-hero" aria-label="Tu punto de partida">
+      <h1>{t("Cada pendiente en su lugar.")}</h1>
+      <p className="intro">{t("Puedes cambiar cualquiera de bandeja. Tú eliges por dónde empezar.")}</p>
+      {selected ? <section className="momentum-hero" aria-label={t("Tu punto de partida")}>
         <div className="hero-eyebrow-row">
-          <span className="hero-eyebrow-pill">Modo Momentum · Acción Inmediata</span>
-          <span className="hero-shield-pill">Una sola cosa a la vez</span>
+          <span className="hero-eyebrow-pill">{t("Modo Momentum · Acción Inmediata")}</span>
+          <span className="hero-shield-pill">{t("Una sola cosa a la vez")}</span>
         </div>
         <h2>{selected.title}</h2>
-        <p className="hero-reason">{selected.why || 'Elegida por Domi para romper la inercia y poner tu día en movimiento.'}</p>
+        <p className="hero-reason">{selected.why || t("Elegida por Domi para romper la inercia y poner tu día en movimiento.")}</p>
         
         {first && (
           <div className="hero-first">
-            <span className="hero-first-tag">Primer movimiento · {first.minutes} min estimados</span>
+            <span className="hero-first-tag">{t("Primer movimiento ·")} {first.minutes} {t("min estimados")}</span>
             <strong>{first.title}</strong>
             {first.hook && <p>{first.hook}</p>}
           </div>
@@ -110,7 +111,7 @@ export function Trays({ session, dispatch, retryDetail }: Props) {
 
         {selected.steps.length > 1 && (
           <details className="hero-steps">
-            <summary>Hacerla más pequeña ({selected.steps.length} micro-pasos disponibles)</summary>
+            <summary>{t("Hacerla más pequeña (")}{selected.steps.length} {t("micro-pasos disponibles)")}</summary>
             <ol>
               {selected.steps.map(step => (
                 <li key={step.id}>
@@ -122,35 +123,34 @@ export function Trays({ session, dispatch, retryDetail }: Props) {
         )}
 
         <div className="hero-action-row">
-          <button className="hero-start" onClick={() => start(selected)}>
-            Arrancar en Dominio <ArrowRight size={18} />
+          <button className="hero-start" onClick={() => start(selected)}> {t("Arrancar en Dominio")} <ArrowRight size={18} />
           </button>
-          <span className="hero-note">Un solo toque. La misma tarea, sin empezar de nuevo.</span>
+          <span className="hero-note">{t("Un solo toque. La misma tarea, sin empezar de nuevo.")}</span>
         </div>
 
-        {dump?.detailStatus === 'pending' && <p className="meta hero-status" role="status">Los micro-pasos se están preparando en segundo plano. Ya puedes arrancar.</p>}
-        {dump?.detailStatus === 'failed' && <p className="meta hero-status">Los micro-pasos no llegaron. <button className="quiet" onClick={() => retryDetail(dump.id)}>Reintentar pasos</button></p>}
-      </section> : <section className="empty-panel"><h2>La mesa está libre.</h2><p>Lo que terminaste sigue disponible abajo.</p></section>}
+        {dump?.detailStatus === 'pending' && <p className="meta hero-status" role="status">{t("Los micro-pasos se están preparando en segundo plano. Ya puedes arrancar.")}</p>}
+        {dump?.detailStatus === 'failed' && <p className="meta hero-status">{t("Los micro-pasos no llegaron.")} <button className="quiet" onClick={() => retryDetail(dump.id)}>{t("Reintentar pasos")}</button></p>}
+      </section> : <section className="empty-panel"><h2>{t("La mesa está libre.")}</h2><p>{t("Lo que terminaste sigue disponible abajo.")}</p></section>}
 
       <div className="tray-grid">
         {TRAYS.map(tray => {
           const Icon = icons[tray.color]
           const tasks = openTasks.filter(task => task.tray === tray.id)
-          return <section key={tray.id} className={`tray tray-${tray.color}`} aria-label={`Bandeja ${tray.name}`}
+          return <section key={tray.id} className={`tray tray-${tray.color}`} aria-label={`${t("Bandeja")} ${t(tray.name)}`}
             onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); const id = dragged.current; if (id) dispatch({ type: 'move', taskId: id, tray: tray.id }); dragged.current = null }}>
-            <header><h2><Icon size={18} />{tray.name}</h2><span className="tray-count" aria-label={`${tasks.length} pendientes`}>{tasks.length}</span></header>
+            <header><h2><Icon size={18} />{t(tray.name)}</h2><span className="tray-count" aria-label={`${tasks.length} ${t("pendientes")}`}>{tasks.length}</span></header>
             <div className="tray-cards">{tasks.map((task, index) => <article key={task.id} className={`task-card${selected?.id === task.id ? ' is-chosen' : ''}`} style={{ animationDelay: `${Math.min(index, 4) * 70}ms` }} draggable
               onDragStart={() => { dragged.current = task.id }} onDragEnd={() => { dragged.current = null }}>
-              <button className="task-pick" onClick={() => dispatch({ type: 'choose', taskId: task.id })} aria-pressed={selected?.id === task.id}><span>{task.title}</span>{selected?.id === task.id && <small>Elegida</small>}</button>
-              <label className="move-label"><span>Mover a</span><select value={task.tray} onChange={event => dispatch({ type: 'move', taskId: task.id, tray: event.target.value as Tray })} aria-label={`Mover ${task.title} a otra bandeja`}>{TRAYS.map(destination => <option key={destination.id} value={destination.id}>{destination.name}</option>)}</select></label>
+              <button className="task-pick" onClick={() => dispatch({ type: 'choose', taskId: task.id })} aria-pressed={selected?.id === task.id}><span>{task.title}</span>{selected?.id === task.id && <small>{t("Elegida")}</small>}</button>
+              <label className="move-label"><span>{t("Mover a")}</span><select value={task.tray} onChange={event => dispatch({ type: 'move', taskId: task.id, tray: event.target.value as Tray })} aria-label={`${t("Mover")} ${task.title} ${t("a otra bandeja")}`}>{TRAYS.map(destination => <option key={destination.id} value={destination.id}>{t(destination.name)}</option>)}</select></label>
             </article>)}</div>
-            {!tasks.length && <p className="tray-empty">Mesa libre en {tray.name}</p>}
+            {!tasks.length && <p className="tray-empty">{t("Mesa libre en")} {t(tray.name)}</p>}
             <TrayResearchInput tray={tray} session={session} dispatch={dispatch} />
           </section>
         })}
       </div>
-      {completed.length > 0 && <details className="completed-tasks"><summary>{completed.length} {completed.length === 1 ? 'pendiente terminado' : 'pendientes terminados'}</summary><ul>{completed.map(task => <li key={task.id}><Check size={16} />{task.title}</li>)}</ul></details>}
-      <div className="tray-footer"><button className="quiet" onClick={() => dispatch({ type: 'screen', screen: 'capture', now: Date.now() })}>Añadir otro vaciado</button><span className="meta">{openTasks.length} pendientes · avance guardado en este navegador</span></div>
+      {completed.length > 0 && <details className="completed-tasks"><summary>{completed.length} {completed.length === 1 ? t("pendiente terminado") : t("pendientes terminados")}</summary><ul>{completed.map(task => <li key={task.id}><Check size={16} />{task.title}</li>)}</ul></details>}
+      <div className="tray-footer"><button className="quiet" onClick={() => dispatch({ type: 'screen', screen: 'capture', now: Date.now() })}>{t("Añadir otro vaciado")}</button><span className="meta">{openTasks.length} {t("pendientes · avance guardado en este navegador")}</span></div>
     </main>
   </div>
 }

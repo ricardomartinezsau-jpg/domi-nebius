@@ -1,0 +1,36 @@
+DOMI — Corrección de acceso público
+Fecha: 2026-09-13
+
+Causa verificada en Render:
+domi-web tenía BETTER_AUTH_URL=http://localhost:3000.
+lib/guest.ts rechaza un origen HTTP en producción con ORIGIN_CONFIGURATION.
+
+Cambio autorizado y aplicado:
+BETTER_AUTH_URL=https://domi-web.onrender.com
+Save and deploy, sin cambios de código.
+Deploy: dep-dajjuedg1s2s73b1rmgg
+Commit: 068f08c0c163f3653a687e2bf39be683ee2a4912
+Render confirmó Live; duración 11.3 s.
+https://dashboard.render.com/web/srv-dailiq7qj5pc73ak88t0/deploys/dep-dajjuedg1s2s73b1rmgg
+
+Prueba pública con una sesión HTTP nueva, sin credenciales ni cookies previas:
+Initial cookies: 0
+GET https://domi-web.onrender.com — HTTP 200
+POST https://domi-web.onrender.com/api/guest
+Origin: https://domi-web.onrender.com
+Content-Type: application/json
+Body: {}
+Respuesta: HTTP 200 {"ready":true}
+Cookie emitida: __Host-domi-guest; Secure=True; HttpOnly=True; Path=/
+Se omite deliberadamente el valor de la cookie.
+
+Verificación visual adicional en navegador:
+La carga pasó de «Abriendo tu mesa…» al formulario inicial.
+Título: «Suelta lo que traes en la cabeza.»
+Campo editable: «¿Qué tienes en la cabeza?»
+Acción: «Encontrar una cosa».
+No apareció solicitud de cuenta ni error de configuración.
+
+Alcance: acceso inicial y creación de sesión de invitado corregidos.
+No se enviaron solicitudes de triage ni research; no se consumieron inferencias ni investigaciones.
+Esta prueba no certifica todavía el recorrido completo hasta un resultado de IA.

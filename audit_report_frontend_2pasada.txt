@@ -1,0 +1,255 @@
+Listed directory tests
+Viewed use-session.ts:1-53
+Viewed session.ts:1-223
+Viewed session.test.mjs:1-122
+Ran command: `npm test`
+Checked task Run existing unit tests
+Ran command: `curl -I http://localhost:3000`
+Checked task Check if localhost:3000 is active
+Checked task Check if localhost:3000 is active
+Killed task Check if localhost:3000 is active
+Ran command: `node -e "fetch('http://localhost:3000').then(r => console.log('STATUS:', r.status)).catch(e => console.error(e.message))"`
+Ran command: `node -e "try { require('playwright'); console.log('playwright found'); } catch { try { require('puppeteer'); console.log('puppeteer found'); } catch { console.log('neither'); } }"`
+Ran command: `powershell -Command "Get-Command msedge, chrome -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source"`
+Ran command: `powershell -Command "Test-Path 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'; Test-Path 'C:\Program Files\Google\Chrome\Application\chrome.exe'"`
+Ran command: `node -v`
+Ran command: `powershell -Command "Start-Process 'C:\Program Files\Google\Chrome\Application\chrome.exe' -ArgumentList '--headless=new', '--remote-debugging-port=9222', '--no-first-run', '--user-data-dir=C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\chrome-profile' -PassThru | Select-Object -ExpandProperty Id"`
+Checked task Launch headless Chrome
+Ran command: `node -e "fetch('http://127.0.0.1:9222/json/version').then(r => r.json()).then(console.log).catch(console.error)"`
+Ran command: `powershell -Command "Get-Process -Id 26656 -ErrorAction SilentlyContinue"`
+Checked task Check process 26656
+Ran command: `powershell -Command "New-Item -ItemType Directory -Path 'C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\chrome-profile' -Force"`
+Ran command: `powershell -Command "Start-Process 'C:\Program Files\Google\Chrome\Application\chrome.exe' -ArgumentList '--headless', '--remote-debugging-port=9222', '--no-first-run', '--disable-gpu', '--user-data-dir=\"C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\chrome-profile\"' -PassThru | Select-Object -ExpandProperty Id"`
+Ran command: `node -e "setTimeout(() => { fetch('http://127.0.0.1:9222/json/version').then(r => r.json()).then(console.log).catch(console.error); }, 1000);"`
+Ran command: `powershell -Command "Get-Process -Id 34120 -ErrorAction SilentlyContinue"`
+Checked task Check Chrome PID 34120
+Created test-browser.mjs
+Ran command: `node C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\test-browser.mjs`
+Checked task Run test-browser.mjs
+Ran command: `node -e "fetch('http://127.0.0.1:9222/json/version').then(r => r.json()).then(console.log).catch(console.error)"`
+Checked task Check CDP version endpoint
+Created verify-suite.mjs
+Ran command: `node C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\verify-suite.mjs`
+Ran command: `node -e "fetch('http://127.0.0.1:9222/json/list').then(r => r.text()).then(console.log)"`
+Ran command: `node -e "fetch('http://127.0.0.1:9222/json/new?http://localhost:3000', { method: 'PUT' }).then(r => r.json()).then(console.log)"`
+Edited verify-suite.mjs
+Edited verify-suite.mjs
+Ran command: `node C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\verify-suite.mjs`
+Checked task Run verify-suite.mjs via CDP
+Checked task Run verify-suite.mjs via CDP
+Killed task Run verify-suite.mjs via CDP
+Viewed .env.local:1-19
+Created verify-suite.mjs
+Ran command: `node C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\verify-suite.mjs`
+Checked task Run complete CDP verify-suite.mjs
+Checked task Run complete CDP verify-suite.mjs
+Checked task Run complete CDP verify-suite.mjs
+Ran command: `node -e "fetch('http://localhost:3000/api/triage', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ phase: 'quick', rawDump: 'Comprar leche y pan', locale: 'es' }) }).then(async r => { console.log('STATUS:', r.status); console.log(await r.text()); }).catch(console.error)"`
+Checked task Test api/triage directly
+Checked task Test api/triage directly
+Checked task Test api/triage directly
+Checked task Test api/triage directly
+Checked task Test api/triage directly
+Viewed next-development.log:1-210
+Checked task Test api/triage directly
+Killed task Test api/triage directly
+Ran command: `taskkill /PID 29680 /F`
+Ran command: `npm run dev`
+Checked task Restart next dev server cleanly
+Ran command: `node -e "setTimeout(() => { fetch('http://localhost:3000').then(r => console.log('DEV SERVER OK:', r.status)).catch(e => console.error(e.message)); }, 3000);"`
+Checked task Wait and test dev server
+Checked task Wait and test dev server
+Ran command: `node -e "const t0 = Date.now(); fetch('http://localhost:3000/api/triage', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ phase: 'quick', rawDump: 'Comprar leche y pagar la luz', locale: 'es' }) }).then(async r => { console.log('STATUS:', r.status, 'TIME:', Date.now() - t0, 'ms'); const json = await r.json(); console.log(JSON.stringify(json, null, 2)); }).catch(console.error)"`
+Edited verify-suite.mjs
+Ran command: `node C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\verify-suite.mjs`
+Checked task Execute CDP verify-suite.mjs
+Checked task Execute CDP verify-suite.mjs
+Checked task Execute CDP verify-suite.mjs
+Checked task Execute CDP verify-suite.mjs
+Checked task Execute CDP verify-suite.mjs
+Checked task Execute CDP verify-suite.mjs
+Checked task Execute CDP verify-suite.mjs
+Checked task Execute CDP verify-suite.mjs
+Created test-submit.mjs
+Ran command: `node C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\test-submit.mjs`
+Checked task Run test-submit.mjs
+Edited test-submit.mjs
+Killed task Run test-submit.mjs
+Ran command: `node C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\test-submit.mjs`
+Checked task Run test-submit with requestSubmit
+Edited test-submit.mjs
+Killed task Run test-submit with requestSubmit
+Ran command: `node C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\test-submit.mjs`
+Edited test-submit.mjs
+Ran command: `node C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\test-submit.mjs`
+Created test-full-interaction.mjs
+Ran command: `node C:\Users\Ricardo\.gemini\antigravity\brain\5f58a81a-855a-4433-bc67-0c30fa1c9c6d\scratch\test-full-interaction.mjs`
+
+PREVIOUS SCORE: 83/100  
+VERIFIED SCORE: 82/100  
+CHANGE: -1  
+
+---
+
+## What the first audit got right
+
+1. **La partición en dos fases (Quick + Detail) rescata el producto:** Observado en vivo. El tiempo de respuesta de Gemma 3 27B en la fase rápida entrega el "Modo Momentum" de inmediato, permitiendo actuar sin esperar la descomposición de pasos.
+2. **La onda de voz es una simulación puramente cosmética:** Verificado en código (`flow.css:77-80`) y en ejecución. `.voice-wave` es una animación CSS infinita en bucle (`@keyframes domi-wave`); no existe conexión con la Web Audio API ni lectura de amplitud del micrófono.
+3. **El Drag & Drop es inutilizable en pantallas táctiles:** Verificado en código (`trays.tsx:145`). Usa la API nativa de HTML5 (`draggable`, `onDragStart`), la cual no despacha eventos de arrastre en iOS Safari ni en Chrome Android mediante gestos táctiles.
+4. **La imposibilidad de editar tareas post-vaciado genera fricción real:** Observado en la interfaz. Si el modelo agrupa o titula una tarea de forma imprecisa, el usuario no cuenta con ningún control de edición en pantalla; solo puede completarla o moverla de bandeja.
+5. **Resiliencia ante fallos de red en captura:** Observado simulando desconexión vía CDP (`Network.emulateNetworkConditions`). Al fallar el envío, el texto introducido permanece intacto en el `<textarea>` y no se destruye.
+6. **Navegación por teclado y foco visible:** Verificado con 15 pulsaciones de Tab secuenciales. Todos los elementos interactivos críticos reciben foco con un anillo visible (`box-shadow: 0 0 0 3px rgba(36, 71, 198, 0.28)`).
+
+---
+
+## What the first audit exaggerated
+
+1. **"Mobile está READY":** La auditoría anterior lo declaró READY basándose únicamente en la presencia de media queries y la ausencia de desbordamiento horizontal. La ejecución real en viewports móviles (375×667 y 390×844) demostró que **Mobile está COMPROMISED**: existen al menos 10 objetivos táctiles con alturas de 34px a 38px (incumpliendo los 44px recomendados por Apple HIG y WCAG 2.5.5) y 4 formularios de investigación idénticos apilados verticalmente en una sola columna.
+2. **"Entrar en Dominio sin pasos deja una pantalla casi vacía":** Exagerado. Al ingresar en Dominio mientras los pasos aún no se han resuelto, la pantalla contiene el título de la tarea, el cronómetro en marcha y el botón de acción principal con un mensaje explicativo sereno; no es una pantalla en blanco.
+3. **"El usuario recibe valor en menos de 4 segundos":** La medición real en vivo de la llamada completa a Nebius tomó 4,273 ms (con 2,810 ms en inferencia). Aunque roza los 3.6 s en condiciones ideales de red, calificarlo tajantemente como "< 4 segundos" es una afirmación inflada.
+4. **"useSession provoca re-renders masivos visibles":** La prueba de estrés de 100 eventos de teclado consecutivos arrojó una latencia promedio de 20.7 ms por evento. En la práctica no existe congelamiento ni tartamudeo perceptible.
+
+---
+
+## What the first audit got wrong
+
+1. **"Un pull-to-refresh puede destruir el vaciado del usuario":** **FALSO.** Comprobado en vivo mediante recarga de página por CDP. El componente `Capture` sincroniza de forma inmediata cada cambio con `useSession` y `localStorage`. Al refrescar la ventana, el borrador se restaura exactamente en el `<textarea>` (`draftRestored: true`).
+2. **"sessionStorage provoca pérdida del trabajo al refrescar":** **FALSO.** La auditoría anterior inventó el uso de `sessionStorage`. El código usa exclusivamente `localStorage` (`STORAGE_KEY = 'domi.session.v1'`), validado formalmente con un esquema Zod.
+3. **"DomiApp es un God Component peligroso":** **FALSO / DOGMA.** `DomiApp` tiene exactamente 51 líneas de código. Es un orquestador ligero de vistas con un reducer centralizado. No existe lógica de negocio dispersa ni complejidad desmedida.
+4. **"useSession provoca race conditions":** **FALSO.** El reducer cuenta con una suite de 44 pruebas unitarias que validan la serialización de acciones, y el manejo asíncrono en `DomiApp` utiliza un mapa de `AbortController` que cancela solicitudes obsoletas.
+5. **"Persistencia merece prioridad P0":** **FALSO.** La justificación original para otorgarle P0 dependía de la supuesta pérdida de datos en recarga, premisa que ha sido refutada empíricamente.
+
+---
+
+## What could not be verified
+
+1. **Rendimiento de SpeechRecognition en dispositivos físicos iOS/Android:** En el entorno headless de pruebas no hay hardware de audio habilitado. El manejo síncrono del inicio del reconocimiento está documentado como un arreglo de permisos móviles, pero su comportamiento acústico real no pudo reproducirse.
+2. **Comportamiento en condiciones de memoria extrema en teléfonos de gama baja:** La prueba midió tiempos de ejecución en motor V8 de escritorio; el impacto térmico o de recolección de basura prolongada en móviles económicos queda como inferencia.
+
+---
+
+## Storage reality
+
+El producto utiliza **`localStorage`** como mecanismo único de persistencia del lado del cliente, protegido por un validador Zod (`sessionSchema`) que filtra sesiones corruptas y previene estados imposibles.
+
+| Scenario | Data survives? | Evidence | Classification |
+|---|---|---|---|
+| Refresh normal (Captura) | **YES** | El borrador escrito reaparece intacto en el `<textarea>` (`draftRestored: true`). | OBSERVED |
+| Refresh normal (Bandejas) | **YES** | Las 2 tareas procesadas, el estado del Modo Momentum y la tarea elegida se mantienen. | OBSERVED |
+| Refresh normal (Dominio) | **YES** | La pantalla permanece en `dominio`, preserva los segundos acumulados y pausa la sesión (`Sesión en pausa`). | OBSERVED |
+| Hard refresh (Ctrl+F5) | **YES** | `localStorage` no se vacía con recarga forzada; el estado se restaura en su totalidad. | OBSERVED |
+| Back / Forward | **YES** | La navegación es interna por estado React (`screen`), sincronizada con eventos `pageshow` / `pagehide`. | CODE-SUPPORTED |
+| New tab (mismo origen) | **YES** | Segunda pestaña abierta vía CDP leyó `domi.session.v1` con las mismas tareas y borrador. | OBSERVED |
+| Close / Reopen tab | **YES** | La persistencia en `localStorage` no depende del ciclo de vida de la pestaña activa. | OBSERVED |
+| Close / Reopen browser | **YES** | Cumple la especificación W3C de LocalStorage: los datos sobreviven al cierre de la aplicación. | CODE-SUPPORTED |
+
+---
+
+## Mobile reality
+
+**Resultado obligatorio:**  
+### **MOBILE: COMPROMISED**
+
+### Evidencia:
+- **Ausencia de overflow:** En viewports de 375×667 (iPhone SE), 390×844 (iPhone 13) y 768×1024 (iPad), `scrollWidth === clientWidth` (`overflow: false`).
+- **Deficiencias de área táctil (Tap Targets):** Se detectaron 10 elementos interactivos por debajo del estándar de 44×44px:
+  - Chips de sugerencia en captura: 34px de altura (`w: 223, h: 34`).
+  - Select para mover bandejas: 36px de altura (`w: 92, h: 36`).
+  - Input de investigación pasiva: 37px de altura (`w: 222, h: 37`).
+  - Botón "Aclarar": 38px de altura (`w: 73, h: 38`).
+- **Incompatibilidad táctil de Drag & Drop:** La propiedad `draggable={true}` no responde a toques sin polyfills externos. La acción depende obligatoriamente del `<select>`.
+- **Sobrecarga de formularios repetidos:** Al apilarse las 4 bandejas en una columna sobre pantallas de 375px, se generan 4 formularios de investigación idénticos consecutivos, alargando el desplazamiento vertical sin justificación funcional.
+
+---
+
+## Keyboard reality
+
+**Resultado obligatorio:**  
+### **ACCESSIBILITY: WITH CONDITIONS**
+
+### Evidencia:
+- **Orden de tabulación completo:** En la vista de bandejas, la secuencia de foco recorre de manera lógica:
+  `Hero Start ("Arrancar en Dominio")` → `Botón "Reintentar pasos"` → `Botón de selección de tarea` → `Select de cambio de bandeja` → `Input de investigación` → `Botón "Aclarar"` → `Siguiente tarea` → `Botón "Añadir otro vaciado"`.
+- **Indicador de foco visible:** Todos los botones, selectores y campos interactivos presentan un indicador claro al tabular (`box-shadow: 0 0 0 3px rgba(36, 71, 198, 0.28)`), sin supresión indebida de `:focus-visible`.
+- **Condición limitante:** El reordenamiento de tareas dentro de la misma bandeja depende del arrastre con mouse; no hay comandos de teclado para alterar el orden relativo, limitándose el usuario a cambiar de bandeja mediante el `<select>`.
+
+---
+
+## React architecture reality
+
+| Supuesta falla | Clasificación | Justificación técnica basada en evidencia |
+|---|---|---|
+| God Component (`DomiApp`) | **NOT A PROBLEM** | Tiene 51 líneas de código. Solo renderiza la pantalla correspondiente según `session.screen` y despacha eventos al reducer. |
+| Prop drilling | **NOT A PROBLEM** | Las propiedades se pasan únicamente un nivel hacia abajo (`DomiApp` → `Capture` / `Trays` / `Dominio`). |
+| Global state (`useSession`) | **NOT A PROBLEM** | Es un reducer de React canónico acompañado de 44 pruebas unitarias automatizadas que garantizan su solidez. |
+| Race conditions | **NOT A PROBLEM** | Las respuestas de red tardías se discriminan por `dumpId`; el estado del usuario siempre prevalece sobre inferencias viejas. |
+| Re-renders | **STYLE PREFERENCE** | La latencia media por pulsación fue de 20.7 ms. No existe impacto medible en el rendimiento de renderizado. |
+| Memory leaks | **NOT A PROBLEM** | Las solicitudes asíncronas se limpian al desmontar los componentes mediante `AbortController.abort()`. |
+| Complejidad de AbortController | **NOT A PROBLEM** | Estructura estándar de control de peticiones en fetch. |
+
+---
+
+## Evidence ledger
+
+| Previous finding | Original severity | Observed? | Code-supported? | Inference? | Still valid? | New severity |
+|---|---|---|---|---|---|---|
+| Sincronización en dos fases rompe la parálisis | High | YES | YES | NO | **YES** | High (Fortaleza) |
+| Fallo en persistencia / pérdida de borrador por refresh | Critical (P0) | NO (Refutado) | NO | SÍ (Equivocada) | **NO** | **WITHDRAWN** |
+| Uso deficiente de sessionStorage | High | NO (Refutado) | NO | SÍ (Equivocada) | **NO** | **WITHDRAWN** |
+| Latencia al escribir rápido | Medium | NO (Refutado) | NO | SÍ | **NO** | **WITHDRAWN** |
+| God Component / Arquitectura frágil | High | NO | NO | SÍ (Dogmática) | **NO** | Style Preference |
+| Drag & Drop roto en móviles | Medium | YES | YES | NO | **YES** | Medium |
+| Onda de audio falsa sin Web Audio API | Low | YES | YES | NO | **YES** | Low |
+| Imposibilidad de editar títulos generados | High | YES | YES | NO | **YES** | High |
+| Objetivos táctiles menores a 44px en móvil | — (No detectado) | YES | YES | NO | **YES** | Medium |
+| Persistencia como blocker crítico (P0) | Critical | NO | NO | SÍ | **NO** | **WITHDRAWN** |
+
+---
+
+## Corrected scorecard
+
+| Dimension | Weight | Original | Verified | Evidence / Rationale |
+|---|---:|---:|---:|---|
+| 1. Product clarity | 10 | 10 | **10** | El mensaje central y el alivio inmediato son inequívocos desde el segundo cero. |
+| 2. Core workflow quality | 12 | 11 | **11** | La transición de captura a Modo Momentum funciona de manera ejemplar. |
+| 3. Information architecture | 8 | 7 | **6** | 4 docks de investigación repetidos en cada bandeja saturan la vista. |
+| 4. Interaction design | 10 | 8 | **7** | Falta control para editar tareas; Drag & Drop no responde a eventos táctiles. |
+| 5. Visual hierarchy & craft | 9 | 8 | **8** | Tipografía Atkinson y paleta sobria; sistema CSS limpio y sin estridencias. |
+| 6. UX writing & communication | 6 | 6 | **6** | Redacción empática, precisa y libre de lenguaje corporativo o técnico. |
+| 7. Responsive / adaptive UX | 7 | 6 | **4** | Objetivos táctiles inferiores a 44px e inflación de scroll vertical en pantallas pequeñas. |
+| 8. Accessibility | 10 | 8 | **7** | Excelente foco visible y contraste; penalizado por tamaños táctiles subestándar. |
+| 9. Loading / error / recovery | 7 | 6 | **7** | Recuperación ante fallos de red impecable; botón "Reintentar pasos" operativo. |
+| 10. Frontend architecture | 8 | 5 | **7** | Evaluada sin prejuicios: 51 líneas, sin memory leaks y con 44 pruebas verdes. |
+| 11. State & data synchronization | 5 | 3 | **4** | LocalStorage confiable, protección contra carreras y rescate ante recarga. |
+| 12. Performance | 4 | 3 | **3** | Rendimiento percibido sobresaliente; latencia de tipeo baja (21 ms/evento). |
+| 13. Testing confidence | 4 | 2 | **2** | Excelente suite para reducer y guardrails; carece de tests visuales/E2E en navegador. |
+
+**TOTAL VERIFIED SCORE: 82/100**
+
+---
+
+## Corrected product maturity
+
+### **Competent MVP**
+
+**Defensa:**  
+No es un "Hackathon-quality MVP" porque no se desmorona ante recargas accidentales, maneja la pérdida de conexión sin destruir la información del usuario y cuenta con contratos formales protegidos por esquemas Zod y 44 pruebas automatizadas. Tampoco califica como "Production-ready product" debido a la falta de edición de tareas y a las deficiencias ergonómicas en pantallas táctiles (tap targets de 34-38px). Se sitúa con solidez en la categoría de **Competent MVP**.
+
+---
+
+MEDIOCRITY TEST:  
+**NOT MEDIOCRE**  
+Demuestra criterio genuino al resolver la latencia del proveedor de IA dividiendo el flujo en dos fases en lugar de forzar al usuario a esperar pasivamente. La persistencia en navegador y el manejo de estados fuera del camino feliz evidencian ingeniería premeditada y no un ensamblaje superficial.
+
+PRODUCT MATURITY:  
+**Competent MVP**
+
+FINAL VERDICT:  
+**SHIP WITH CONDITIONS**
+
+**Justificación:**  
+El producto demuestra una experiencia central excepcionalmente humana y estable, respaldada por una persistencia local que la auditoría previa desconoció por completo. Las condiciones para autorizar su salida no son reconstrucciones arquitectónicas de React, sino dos ajustes ergonómicos concretos:
+1. Ampliar la altura de los objetivos táctiles en móvil (chips y selectores) a un mínimo de 44px.
+2. Permitir la edición manual del título de las tareas generadas para corregir malas interpretaciones del modelo.
+
+Cumplidas estas dos correcciones de interfaz, la aplicación está lista para exponerse a usuarios reales.

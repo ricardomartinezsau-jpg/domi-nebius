@@ -1,9 +1,14 @@
 # Backend remediation — operación y límites
 
-Estado: implementación local; **no autoriza migrar, desplegar ni habilitar admisión**.
-La migración aditiva es `db/migrations/0007_admission_and_execution.sql`. No se han
-modificado migraciones históricas, proveedores, modelos ni el esquema de producto
-de `lib/triage.ts`.
+Estado al 13 de septiembre de 2026: la batería SQL aislada aprobó 8/8 casos;
+`068f08c0c163f3653a687e2bf39be683ee2a4912` se integró y publicó en `main`.
+`domi-web` quedó `live` en Render y `domi-research` registró una versión `ready`
+del mismo commit. Esto **no autoriza** aplicar la migración `0007`, tocar la base
+real, habilitar admisión, iniciar tareas de Workflow ni ejecutar Nebius.
+
+La migración aditiva pendiente es `db/migrations/0007_admission_and_execution.sql`.
+No se han modificado migraciones históricas, proveedores, modelos ni el esquema de
+producto de `lib/triage.ts`.
 
 ## Contratos
 
@@ -150,15 +155,101 @@ de revisar frente a la red/configuración reales.
   servicios pagados. El E2E histórico conserva valor de evidencia anterior, pero su
   contrato viejo no valida la nueva generación/propiedad.
 
-**Bloqueo de validación en este entorno:** no se encontró PostgreSQL/Docker local.
-Las pruebas SQL reales y la compatibilidad con el esquema desplegado siguen pendientes.
-Los mocks verifican decisiones, orden y tratamiento de fallos; no prueban la semántica
-de locks de PostgreSQL. No se debe habilitar admisión basándose solo en ellos.
+### Incidencia activa: despliegue y esquema real divergentes
 
-Antes de publicar: completar SQL aislado, revisar migración y permisos del rol de aplicación contra esquema real
-(solo con autorización), revisar los workers/SDK desplegados, coordinar versiones,
-verificar origen/proxy y aprobar activación. Se mantiene el acceso público cerrado
-por defecto hasta completar esas puertas. No se afirma un nuevo score certificado.
+La batería SQL aislada comprobó el contrato nuevo sobre un esquema sintético
+desechable; no certifica la base de datos desplegada. La migración
+`0007_admission_and_execution.sql` **sigue sin aplicarse en la base real**.
+
+Por tanto, `068f08c` no está solamente con la admisión cerrada: las rutas que cruzan
+el contrato nuevo fallan por incompatibilidad SQL de esquema. Las lecturas autorizadas
+consultan `runs.guest_owner`, `runs.dispatch_state` y `runs.dispatch_started_at`, y
+registran cuota en `admission_counters`; con 0007 ausente arrojan error SQL aun cuando
+la admisión pagada está cerrada. Las mutaciones y el ejecutor también requieren
+`idempotency_key`, `request_hash`, `generation`, `correlation_id`,
+`run_steps.generation`, los índices nuevos y `admission_counters`.
+
+La ausencia de `DOMI_ADMISSION_ENABLED=true` evita admitir trabajo nuevo, pero no hace
+compatible el esquema ni corrige las lecturas existentes. No habilitar admisión hasta
+aplicar y verificar 0007, comprobar logs sin errores SQL y obtener una autorización
+separada para activar web y Workflow.
+
+## Procedimiento propuesto — migración 0007 (no ejecutar aún)
+
+Este procedimiento requiere una autorización posterior y separada. Mantener
+`DOMI_ADMISSION_ENABLED` ausente, `false` o inválido en web y Workflow durante toda la
+operación; la migración no abre admisión.
+
+1. Confirmar el destino de `DATABASE_URL`, TLS, propietario de la base y una copia de
+   seguridad recuperable. El rol debe poder crear `admission_counters`, alterar `runs`
+   y `run_steps`, crear índices y escribir en `_migrations`. Reservar una ventana sin
+   escritores, un único operador y admisión cerrada: el runner no impone un lock global
+   ni `lock_timeout`, y los índices ordinarios de 0007 pueden bloquear escrituras.
+2. Consultar el catálogo y `_migrations` en modo lectura. Confirmar que 0001–0006 están
+   registradas con el hash que corresponde al repositorio y que 0007 no figura aplicada.
+   Detenerse ante un hash distinto, un ledger ausente o cualquier migración anterior
+   pendiente. `tools/migrate.mjs` no tiene selector: aplicaría **todas** las pendientes.
+   La consulta de ledger es:
+
+   ```sql
+   SELECT name, sha256, applied_at FROM _migrations ORDER BY name;
+   ```
+
+   Las huellas esperadas son:
+
+   | Migración | SHA-256 normalizado |
+   | --- | --- |
+   | `0001_auth.sql` | `9bae194857e5764ea9f351b2d9b98026f73e856aaa37a472cd5d40ed00e8d4d3` |
+   | `0002_domain.sql` | `59aef72dd963f2c73fe9663d4aea71380ec085cd3730d2e5028b45d7248e06f4` |
+   | `0003_research.sql` | `33efb287853f6dca9abf3701432066f90f3f03dc493e8d24ec6d2d94c9a5bce7` |
+   | `0004_render_workflows.sql` | `59391eaf49942c6ebd98756cdbb8d4334c14db7d6833e372af1c6bbc45e25c22` |
+   | `0005_research_locks.sql` | `a0cd39f128a6bf2d12e9bcd99e753097a87432d48fc9e482b2be3ee8a617bc1d` |
+   | `0006_run_ok_starts_false.sql` | `77ab598e1f048d5e25a4e3dc242e84e4c1044fb31d1108144b4226378edbb1a9` |
+   | `0007_admission_and_execution.sql` | `9ac762371eb9f637bac8531b1063a6315341cc02f719c5912113886ee441a379` |
+3. Verificar localmente la huella normalizada de 0007 antes de ejecutar: debe ser
+   `9ac762371eb9f637bac8531b1063a6315341cc02f719c5912113886ee441a379`. No usar
+   `tools/migrate.mjs --dry-run` como sonda de sólo lectura: crea `_migrations` si no
+   existe.
+4. Con la aprobación expresa, ejecutar una sola vez el migrador contra el destino
+   confirmado. Primero correr `npm run migrate -- --dry-run`: debe informar sólo
+   `pendiente: 0007_admission_and_execution.sql`; cualquier otra pendiente o diferencia
+   cancela la operación. Después, sin cambiar commit, destino ni TLS, correr
+   `npm run migrate`. Registrar la salida, sin imprimir credenciales. El migrador ejecuta
+   cada archivo dentro de su propia transacción y registra la huella sólo después del
+   `COMMIT`. No ejecutar el archivo con `psql -f`: perdería el ledger y las garantías del
+   runner.
+5. Verificar antes de cualquier activación que `_migrations` contiene 0007 con la huella
+   esperada; que existe `admission_counters`; que `runs` tiene `guest_owner`,
+   `idempotency_key`, `request_hash`, `generation`, `dispatch_state`,
+   `dispatch_started_at` y `correlation_id`; que `run_steps.generation` existe; y que
+   existen los índices `runs_guest_idempotency` y `runs_guest_active`. Las consultas de
+   comprobación son:
+
+   ```sql
+   SELECT name, sha256 FROM _migrations
+   WHERE name = '0007_admission_and_execution.sql';
+   SELECT to_regclass('public.admission_counters') AS admission_counters;
+   SELECT table_name, column_name
+   FROM information_schema.columns
+   WHERE (table_name = 'runs' AND column_name IN
+     ('guest_owner', 'idempotency_key', 'request_hash', 'generation',
+      'dispatch_state', 'dispatch_started_at', 'correlation_id'))
+      OR (table_name = 'run_steps' AND column_name = 'generation')
+   ORDER BY table_name, column_name;
+   SELECT indexname FROM pg_indexes
+   WHERE schemaname = 'public' AND tablename = 'runs'
+     AND indexname IN ('runs_guest_idempotency', 'runs_guest_active')
+   ORDER BY indexname;
+   ```
+6. Revisar pasivamente logs de web y Workflow por errores SQL o `workflow.db_probe`.
+   Mantener admisión cerrada y no iniciar investigaciones ni Nebius. Sólo una nueva
+   autorización puede habilitar por separado los dos servicios.
+
+Si la migración falla, el migrador hace `ROLLBACK` de esa migración y no escribe su
+ledger. No reintentar a ciegas: comprobar `_migrations` y el catálogo, conservar la
+evidencia y el respaldo, y detenerse si hay cualquier columna, tabla o índice parcial.
+No editar 0007 ni borrar filas del ledger. Una divergencia fuera de la transacción
+requiere una migración correctiva aditiva y aprobación de arquitectura/Ricardo.
 
 ## Rollback y stop conditions
 
@@ -174,16 +265,30 @@ credenciales nuevas, infraestructura externa o producción; si el esquema o SDK 
 contradicen lo asumido; o si recuperar datos históricos exige adjudicar un propietario
 sin prueba. Documentar el bloqueo antes de continuar.
 
-## Verificación local del 13 de septiembre de 2026
+## Verificación e integración del 13 de septiembre de 2026
 
 `npm test`: **82 pruebas aprobadas**, incluidas las 44 preexistentes, sin proveedores reales.
-`npm run test:backend-sql`: **una suite omitida**, ninguna garantía SQL real certificada.
+`npm run test:backend-sql`: **8/8 casos aprobados** contra PostgreSQL local desechable,
+sin fallos ni omisiones. Esta evidencia cubre cuotas, propiedad, idempotencia, claims,
+fencing y rollback; no certifica Better Auth, pgvector ni el esquema real.
 
 Typecheck y build con configuración sintética completados. El build informa que
 Better Auth no pudo validar la DB ficticia y advierte sobre el fallback de la fuente;
 ninguno de esos mensajes certifica ni invalida el esquema real. Evaluador en
 `--self-test` y `--dry-run`: aprobados, cero llamadas externas.
 
-La batería SQL se intentó y quedó omitida por ausencia de base desechable. No se
-ejecutaron migraciones, workflows remotos, E2E pagados, push ni despliegues. No se
-instalaron paquetes. Los tres informes de auditoría preexistentes se conservan sin cambios.
+`068f08c0c163f3653a687e2bf39be683ee2a4912` se integró y publicó en `main`.
+`domi-web` completó su despliegue en Render, quedó `live` y respondió HTTP 200;
+`domi-research` registró la versión `068f08c` en estado `ready` y el slug
+`domi-research/research` resuelve a ella. Esto confirma build, disponibilidad web y
+registro de tareas, no compatibilidad con la base real ni una ejecución end-to-end.
+
+La admisión permanece cerrada: `DOMI_ADMISSION_ENABLED` está ausente y sólo el literal
+`true` la abre. No se aplicó 0007 en la base real, no se inició ninguna tarea de Workflow,
+no se habilitó admisión y no se ejecutó Nebius, Linkup ni E2E pagado. Better Auth,
+pgvector, la migración completa desde una base existente y la concurrencia compleja entre
+workers siguen fuera de esta batería.
+
+Advertencia registrada: Node recompila `lib/db.ts` como ESM porque `package.json` no
+declara `type: "module"`; es deuda técnica no bloqueante y queda fuera de esta rama.
+Los tres informes de auditoría preexistentes se conservan sin cambios.
