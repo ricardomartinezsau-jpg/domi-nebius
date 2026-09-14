@@ -53,7 +53,7 @@ export function Dominio({ session, dispatch, retryDetail }: Props) {
   const doneSteps = task.steps.filter(step => step.done).length
   const act = (type: 'pause' | 'resume' | 'leave' | 'finish' | 'stop') => { const time = Date.now(); setNow(time); dispatch({ type, now: time }) }
   return <div className="dominio-page"><div className="domi-shell dominio-shell">
-    <header className="domi-header"><Brand /><span className="badge">{t("Dominio · una cosa en movimiento")}</span></header>
+    <header className="domi-header"><Brand onClick={() => dispatch({ type: 'screen', screen: 'capture', now: Date.now() })} /><span className="badge">{t("Dominio · una cosa en movimiento")}</span></header>
     <main className="dominio-main">
       <article className="dominio-card">
         <p className="eyebrow">{task.done ? t("Una cosa menos en la mesa") : t("Sigue con esta acción")}</p>

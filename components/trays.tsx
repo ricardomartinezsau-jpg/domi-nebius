@@ -89,7 +89,7 @@ export function Trays({ session, dispatch, retryDetail }: Props) {
   const completed = session.tasks.filter(task => task.done)
 
   return <div className="domi-shell trays-shell">
-    <header className="domi-header"><Brand /><span className="badge">{t("Tus bandejas")}</span></header>
+    <header className="domi-header"><Brand onClick={() => dispatch({ type: 'screen', screen: 'capture', now: Date.now() })} /><span className="badge">{t("Tus bandejas")}</span></header>
     <main>
       <h1>{t("Cada pendiente en su lugar.")}</h1>
       <p className="intro">{t("Puedes cambiar cualquiera de bandeja. Tú eliges por dónde empezar.")}</p>

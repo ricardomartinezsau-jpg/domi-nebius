@@ -91,7 +91,10 @@ const BASE_EN = `You are Domi's triage engine. You receive a chaotic brain dump 
 const QUICK_ES = `${BASE_ES}
 
 Devuelve SOLO dos cosas:
-1. BANDEJAS (trayDispatch): clasifica cada ítem en personalBienestar, profesionalProductiva, familiarDomestica o socialComunitaria.
+1. BANDEJAS (trayDispatch): clasifica y formula cada pendiente en personalBienestar, profesionalProductiva, familiarDomestica o socialComunitaria.
+   - FORMULA ACCIONES CONCRETAS: No copies quejas caóticas, desahogos ni errores ortográficos tal cual. Transforma cada pensamiento en una tarea concreta, accionable y alcanzable con buena ortografía. Por ejemplo, si escribe "dejo en visto a medio mundo", conviértelo en "Revisar mensajes pendientes y contestar a los 3 primeros"; si escribe "el desastre de la cocina", pon "Lavar los platos acumulados".
+   - Cada tarea debe iniciar con un verbo de acción claro, ser breve y factible.
+   - No inventes pendientes que la persona no mencionó: extrae y formula lo que realmente necesita hacerse a partir de lo que expresó.
 2. MOMENTUM (momentumMode): un activationHook de 2 a 5 minutos ridículamente fácil; las trampas de dopamina falsa que detectes, sin culpar; y un singleFocusShield claro.
 
 REGLA INNEGOCIABLE: si el vaciado trae señales de colapso físico (no poder respirar, pánico, temblor, parálisis total), el activationHook DEBE ser una acción que regule el cuerpo —respirar, tomar agua, salir a tomar aire— antes que cualquier entrega de trabajo. El compromiso sigue existiendo después; la persona no.
@@ -106,7 +109,10 @@ CÓMO SE ESCRIBE:
 const QUICK_EN = `${BASE_EN}
 
 Return ONLY two things:
-1. TRAYS (trayDispatch): classify every item into personalBienestar, profesionalProductiva, familiarDomestica or socialComunitaria.
+1. TRAYS (trayDispatch): classify and formulate each item into personalBienestar, profesionalProductiva, familiarDomestica or socialComunitaria.
+   - FORMULATE CONCRETE ACTIONS: Do not copy raw chaotic text, vague vents, or typos verbatim. Transform each thought into a concrete, doable, well-phrased actionable task with proper grammar and spelling. For example, if the person writes "leaving everyone on read", turn it into "Check pending messages and reply to the first 3"; if they write "kitchen is a disaster", turn it into "Wash accumulated dishes".
+   - Each task must start with a clear action verb, be concise, and realistic.
+   - Never invent tasks the person did not mention: extract and formulate what actually needs doing from what they expressed.
 2. MOMENTUM (momentumMode): a ridiculously easy 2-5 minute activationHook; the fake-dopamine traps you detect, without blame; and a clear singleFocusShield.
 
 NON-NEGOTIABLE: if the dump shows signs of physical collapse (can't breathe, panic, shaking, total paralysis), the activationHook MUST be a body-regulating action —breathe, drink water, step outside— before any work delivery. The commitment survives; the person may not.
@@ -121,7 +127,7 @@ HOW IT IS WRITTEN:
 const DETAIL_ES = `${BASE_ES}
 
 Ya se decidió el reparto en bandejas y el arranque. Ahora devuelve SOLO:
-1. DEPENDENCIAS (dependencyOrder): detecta qué bloquea a qué y numera de 1 a N. El paso 1 no puede depender de nada pendiente.
+1. DEPENDENCIAS (dependencyOrder): detecta qué bloquea a qué y numera de 1 a N usando los títulos de las tareas ya formuladas. El paso 1 no puede depender de nada pendiente.
 2. MICRO-TAREAS (microTasks): parte en pasos de 2 a 10 minutos, cada uno con un actionableHook que sea el primer movimiento físico o de pantalla concreto.
 
 LÍMITE ESTRICTO: descompón como MÁXIMO 3 tareas, las que más destraban el resto. Entregar diez tareas descompuestas a la vez reproduce la avalancha que esta persona vino a evitar. Las demás quedan listadas en las bandejas, sin descomponer.`
@@ -129,7 +135,7 @@ LÍMITE ESTRICTO: descompón como MÁXIMO 3 tareas, las que más destraban el re
 const DETAIL_EN = `${BASE_EN}
 
 Tray dispatch and the starting hook are already decided. Now return ONLY:
-1. DEPENDENCIES (dependencyOrder): detect what blocks what and number 1..N. Step 1 cannot depend on anything pending.
+1. DEPENDENCIES (dependencyOrder): detect what blocks what and number 1..N using the formulated task titles. Step 1 cannot depend on anything pending.
 2. MICRO-TASKS (microTasks): break into 2-10 minute steps, each with an actionableHook that is the concrete first physical or on-screen move.
 
 HARD LIMIT: decompose AT MOST 3 tasks, the ones that unblock the most. Handing over ten decomposed tasks at once recreates the avalanche this person came to escape. The rest stay listed in the trays, undecomposed.`

@@ -35,12 +35,14 @@ export function Wordmark({ className = 'domi-wordmark' }: { className?: string }
 export function Brand({
   showSymbol = true,
   className = 'domi-brand',
+  onClick,
 }: {
   showSymbol?: boolean
   className?: string
+  onClick?: () => void
 }) {
-  return (
-    <span className={className} aria-label="Domi">
+  const content = (
+    <>
       {showSymbol && (
         <svg
           width="32"
@@ -60,6 +62,25 @@ export function Brand({
         </svg>
       )}
       <Wordmark className="domi-wordmark" />
+    </>
+  )
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={`${className} domi-brand-btn`}
+        onClick={onClick}
+        aria-label="Domi - Ir al inicio (Añadir otro vaciado)"
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return (
+    <span className={className} aria-label="Domi">
+      {content}
     </span>
   )
 }

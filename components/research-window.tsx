@@ -13,7 +13,7 @@ export function ResearchWindow({ research, dispatch }: { research: NonNullable<D
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => { heading.current?.focus() }, [research.runId])
   return <div className="domi-shell research-shell">
-    <header className="domi-header"><Brand /><span className="badge">{t("Investigación ·")} {t(TRAYS.find(tray => tray.id === research.tray)?.name ?? '')}</span></header>
+    <header className="domi-header"><Brand onClick={() => dispatch({ type: 'screen', screen: 'capture', now: Date.now() })} /><span className="badge">{t("Investigación ·")} {t(TRAYS.find(tray => tray.id === research.tray)?.name ?? '')}</span></header>
     <main>
       <button className="quiet research-back" onClick={() => dispatch({ type: 'screen', screen: 'trays', now: Date.now() })}><ArrowLeft size={16} />{t("Volver a las bandejas")}</button>
       <p className="eyebrow">{t("Un espacio para aclarar")}</p>

@@ -21,6 +21,11 @@ p { line-height:1.6; }
 .domi-shell { margin:0 auto; padding:32px 24px 36px; min-height:100svh; }
 .domi-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:40px; }
 .domi-brand { display:inline-flex; align-items:center; gap:10px; line-height:1; }
+.domi-brand-btn { background:none; border:0; padding:0; margin:0; font:inherit; color:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:10px; line-height:1; text-decoration:none; border-radius:8px; transition:opacity 150ms var(--domi-ease),transform 150ms var(--domi-ease); }
+.domi-brand-btn:hover { opacity:.82; }
+.domi-brand-btn:active { transform:scale(.97); }
+.domi-brand-btn:focus-visible { outline:none; box-shadow:0 0 0 3px rgba(36,71,198,.28); }
+.dominio-page .domi-brand-btn:focus-visible { box-shadow:0 0 0 3px rgba(176,196,255,.35); }
 .domi-symbol-svg { width:32px; height:20px; flex-shrink:0; color:var(--domi-blue); }
 .domi-wordmark { height:20px; width:auto; flex-shrink:0; color:var(--ink); }
 .dominio-page .domi-wordmark { color:#f5f5ef; }
@@ -171,9 +176,9 @@ kbd { padding:2px 5px; border:1px solid #252a341f; border-radius:4px; font:inher
 .research-icon { color:#335cff; }
 .research-title { font-size:16px; font-weight:700; margin:0; color:#c7d6ff; }
 .research-status-badge { font-size:12px; font-weight:600; padding:4px 10px; border-radius:12px; }
-.research-status-badge.status-running,.research-status-badge.status-queued { background:#2447c62b; color:#a3b8ff; border:1px solid #335cff4d; }
-.research-status-badge.status-done { background:#1d6b452e; color:#7ee787; border:1px solid #1d6b4559; }
-.research-status-badge.status-failed { background:#9c332d2e; color:#f85149; border:1px solid #9c332d59; }
+.research-status-badge.status-running,.research-status-badge.status-queued { background:#e8effc; color:#1b3da6; border:1px solid #2447c638; }
+.research-status-badge.status-done { background:#eaf5ee; color:#165b36; border:1px solid #287d4c40; }
+.research-status-badge.status-failed { background:#fdf2f1; color:#9c2823; border:1px solid #9c332d38; }
 
 .research-recovery-box { margin-bottom:18px; padding:14px 16px; background:#1b253b; border:1px solid #335cff66; border-radius:12px; }
 .recovery-badge-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#7092ff; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
@@ -207,9 +212,16 @@ kbd { padding:2px 5px; border:1px solid #252a341f; border-radius:4px; font:inher
 .citations-pills { display:flex; flex-wrap:wrap; gap:6px; }
 .citation-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 11px; background:#18233c; border:1px solid #335cff4d; border-radius:999px; color:#8cb2ff; font-size:12px; text-decoration:none; transition:all 120ms ease; }
 .citation-pill:hover { background:#2447c638; color:#fff; border-color:#335cff; }
-.confidence-tag { font-size:10px; padding:2px 7px; border-radius:999px; text-transform:uppercase; font-weight:700; }
-.confidence-tag.conf-alta { background:#1d6b453d; color:#7ee787; }
-.confidence-tag.conf-media { background:#9270163d; color:#fcd34d; }
+.confidence-tag { font-size:10px; padding:2px 7px; border-radius:999px; text-transform:uppercase; font-weight:700; letter-spacing:.3px; }
+.confidence-tag.conf-alta { background:#eaf5ee; color:#165b36; border:1px solid #287d4c38; }
+.confidence-tag.conf-media { background:#fdf6e7; color:#73520b; border:1px solid #92701638; }
+
+.dominio-page .research-status-badge.status-running,
+.dominio-page .research-status-badge.status-queued { background:#2447c62b; color:#a3b8ff; border:1px solid #335cff4d; }
+.dominio-page .research-status-badge.status-done { background:#122b1c; color:#7ee787; border:1px solid rgba(126,231,135,.35); }
+.dominio-page .research-status-badge.status-failed { background:#2b1414; color:#fca5a5; border:1px solid rgba(248,81,73,.35); }
+.dominio-page .confidence-tag.conf-alta { background:#122b1c; color:#7ee787; border:1px solid rgba(126,231,135,.35); }
+.dominio-page .confidence-tag.conf-media { background:#2b200b; color:#fde047; border:1px solid rgba(252,211,77,.35); }
 
 .research-unconfirmed-box { margin-top:20px; padding:14px 18px; background:#291b0b; border:1px solid #d9774566; border-radius:12px; }
 .unconfirmed-header { display:flex; align-items:center; gap:8px; color:#f59e0b; font-size:13.5px; font-weight:700; margin-bottom:6px; }
@@ -628,6 +640,91 @@ kbd { padding:2px 5px; border:1px solid #252a341f; border-radius:4px; font:inher
   background: #D0DCF0;
   color: var(--domi-blue);
   border-color: rgba(36, 71, 198, 0.2);
+}
+
+.research-shell .research-recovery-box {
+  background: #f0f5ff;
+  border: 1px solid #c7d8ff;
+}
+.research-shell .recovery-badge-row {
+  color: #1b3da6;
+}
+.research-shell .research-recovery-box strong {
+  color: var(--ink);
+}
+.research-shell .research-recovery-box p {
+  color: var(--domi-muted);
+}
+
+.research-shell .research-active-questions {
+  background: #f8fafc;
+  border: 1px solid rgba(37, 42, 52, 0.08);
+}
+.research-shell .active-questions-label {
+  color: #596273;
+}
+.research-shell .research-active-questions ul {
+  color: var(--ink);
+}
+.research-shell .research-active-questions small {
+  color: #596273;
+}
+
+.research-shell .research-unconfirmed-box {
+  background: #faf8f2;
+  border: 1px solid rgba(158, 125, 59, 0.24);
+  border-left: 4.5px solid #9E7D3B;
+}
+.research-shell .unconfirmed-header {
+  color: #6E531C;
+}
+.research-shell .unconfirmed-note {
+  color: #6B572C;
+}
+.research-shell .unconfirmed-items {
+  color: #3C362A;
+}
+.research-shell .disagreement-box {
+  border-top-color: rgba(158, 125, 59, 0.2);
+  color: #4A3A17;
+}
+
+.research-shell .research-failed-box {
+  background: #fdf2f1;
+  border: 1px solid #f5b7b1;
+  color: #8a2420;
+}
+
+.research-shell .pipeline-node {
+  background: #f4f6fa;
+  border: 1px solid #e2e7f0;
+  color: #536074;
+}
+.research-shell .pipeline-node.is-past {
+  background: #e8effc;
+  border-color: #2447c638;
+  color: #1b3da6;
+}
+.research-shell .pipeline-node.is-current {
+  background: #2447c6;
+  border-color: #2447c6;
+  color: #ffffff;
+}
+
+.research-shell .research-sources-details {
+  color: #596273;
+}
+.research-shell .research-sources-details summary {
+  color: #1b3da6;
+}
+.research-shell .all-sources-list a {
+  color: #1b3da6;
+}
+.research-shell .all-sources-list a:hover {
+  color: #122b80;
+}
+.research-shell .source-meta {
+  color: #596273;
 }
 
 /* Botón ergonómico táctil "＋ A la bandeja" */

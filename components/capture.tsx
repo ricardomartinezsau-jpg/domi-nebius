@@ -165,7 +165,7 @@ export function Capture({ initialText, onDraft, onResult, onBack, hasTasks }: Pr
 
   return <div className="domi-shell capture-shell">
     <header className="domi-header">
-      <Brand />
+      <Brand onClick={() => field.current?.focus()} />
       {hasTasks ? <button className="quiet" onClick={onBack} disabled={busy}>{t("Mis pendientes")}</button> : <span className="capture-badge">{t("La mesa libre")}</span>}
     </header>
     <main className="capture-main">
