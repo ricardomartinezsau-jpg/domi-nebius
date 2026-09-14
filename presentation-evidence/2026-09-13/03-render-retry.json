@@ -1,0 +1,42 @@
+{
+  "source": "Render Public API and authenticated dashboard",
+  "capturedAt": "2026-09-14T05:39:18Z",
+  "workflow": {
+    "id": "wfl-dailmpgjo6nc73fe6dng",
+    "slug": "domi-research",
+    "demoVersion": "68704cf"
+  },
+  "rootTaskRun": {
+    "id": "trn-0b94gdajogqmk1f9s738qpti0",
+    "status": "completed",
+    "runId": "5cd6e72d-bec3-413b-bc6a-da1e1b6ff72b",
+    "durationSeconds": 27.5
+  },
+  "controlledRetry": {
+    "task": "demoFault",
+    "taskRunId": "trn-0b94gdajogspsbvag00e8295g",
+    "attempts": [
+      {
+        "attempt": 1,
+        "renderAttemptIndex": 0,
+        "status": "failed",
+        "completedAt": "2026-09-14T05:38:59.996831Z",
+        "error": "RESEARCH_STEP_FAILED"
+      },
+      {
+        "attempt": 2,
+        "renderAttemptIndex": 1,
+        "status": "completed",
+        "completedAt": "2026-09-14T05:39:01.672448Z"
+      }
+    ]
+  },
+  "durableLedger": [
+    { "step": "question-1", "status": "done", "attempt": 1 },
+    { "step": "search-1", "status": "done", "attempt": 1 },
+    { "step": "demo-fault", "status": "done", "attempt": 2, "recovered": true },
+    { "step": "gap", "status": "done", "attempt": 1 },
+    { "step": "search-2", "status": "done", "attempt": 1 },
+    { "step": "guide", "status": "done", "attempt": 1 }
+  ]
+}

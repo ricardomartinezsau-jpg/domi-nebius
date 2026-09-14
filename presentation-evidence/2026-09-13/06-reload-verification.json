@@ -1,0 +1,17 @@
+{
+  "source": "Same guest session, deployed GET /api/research after browser reload",
+  "checkedAt": "2026-09-14T05:50:00Z",
+  "runId": "5cd6e72d-bec3-413b-bc6a-da1e1b6ff72b",
+  "httpStatus": 200,
+  "status": "done",
+  "steps": 6,
+  "questions": 2,
+  "sources": 16,
+  "database": {
+    "runSteps": 6,
+    "researchQuestions": 2,
+    "findings": 16,
+    "duplicateSourcesByRoundAndUrl": 0
+  },
+  "result": "The reload was read-only: no new execution, question, finding, or duplicate source was created."
+}

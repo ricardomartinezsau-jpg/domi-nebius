@@ -1,6 +1,6 @@
 # Evaluación Nebius — Domi
 
-Fecha: 2026-09-14T05:28:45.388Z. Fase rápida: `google/gemma-3-27b-it`. Fase de detalle: `openai/gpt-oss-120b`.
+Fecha de inicio (UTC; **13 de septiembre en Ciudad de México**): 2026-09-14T05:28:45.388Z. Fase rápida: `google/gemma-3-27b-it`. Fase de detalle: `openai/gpt-oss-120b`.
 
 ## Qué se mide y por qué
 
