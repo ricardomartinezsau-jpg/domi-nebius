@@ -1,0 +1,53 @@
+{
+  "kind": "public-anonymous-triage-check",
+  "checkedAt": "2026-09-14T06:42:46.710Z",
+  "url": "https://domi-web.onrender.com",
+  "sourceCommit": "b7dec3f4df5a4ab15044e01b27cc3ab7afffe05c",
+  "visitor": {
+    "anonymousGuestBootstrap": true,
+    "httpStatus": 200
+  },
+  "quick": {
+    "httpStatus": 200,
+    "model": "google/gemma-3-27b-it",
+    "latencyMs": 15146,
+    "requestId": "ab503516-f509-4197-af3d-85c07e260f15",
+    "activationHookPresent": true,
+    "guardrails": {
+      "checked": [
+        "no-schema-leak",
+        "no-markup",
+        "no-shouting",
+        "hook-is-one-action",
+        "hook-not-empty"
+      ],
+      "failed": [],
+      "repaired": false,
+      "safeHookApplied": false
+    }
+  },
+  "detail": {
+    "httpStatus": 200,
+    "model": "openai/gpt-oss-120b",
+    "latencyMs": 9638,
+    "requestId": "9b0d1c12-1ca0-4f24-bd07-a88fca65de10",
+    "guardrails": {
+      "checked": [
+        "no-schema-leak",
+        "no-markup",
+        "no-shouting",
+        "micro-steps-present",
+        "step-budget",
+        "decomposition-budget",
+        "first-step-startable",
+        "sequence-numbered",
+        "hooks-concrete",
+        "grounded-has-source"
+      ],
+      "failed": [],
+      "repaired": false,
+      "safeHookApplied": false
+    }
+  },
+  "redaction": "The newly-issued guest cookie and the visitor's raw input are intentionally omitted. This is the sanitized response summary from one fresh, no-account production session."
+}

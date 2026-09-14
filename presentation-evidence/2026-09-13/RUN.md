@@ -43,3 +43,7 @@ Tras cargar de nuevo la pantalla y hacer un GET autenticado del mismo run, la re
 ## Nebius
 
 La evaluación autorizada inició a las 23:28:45 CDT y está en `EVALUATION.md` y el JSON de evidencia. Mide los cinco fixtures con `google/gemma-3-27b-it` en la fase rápida y `openai/gpt-oss-120b` en detalle: 5/5 pasan contrato y rúbrica; media rápida 7356 ms, detalle 4669 ms, total 12025 ms y costo estimado medio $0.001093 USD. Las tarifas se etiquetan como no verificadas, no como facturación de Nebius.
+
+## Comprobación pública posterior
+
+El 14 de septiembre a las `06:42:46.710Z`, una sesión invitada recién emitida en la URL pública completó las dos fases del endpoint desplegado sin cuenta. La fase rápida respondió `200` con `google/gemma-3-27b-it` en 15146 ms (`ab503516-f509-4197-af3d-85c07e260f15`) y la fase de detalle respondió `200` con `openai/gpt-oss-120b` en 9638 ms (`9b0d1c12-1ca0-4f24-bd07-a88fca65de10`). Ninguna regla de salida falló. El resumen saneado, sin cookie ni texto de la persona, está en `../2026-09-14/07-public-triage-anonymous.json`; corresponde al commit desplegado `b7dec3f4df5a4ab15044e01b27cc3ab7afffe05c`.
