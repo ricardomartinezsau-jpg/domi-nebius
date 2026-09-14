@@ -7,6 +7,7 @@ secretos, cookies y valores de configuración no se incluyen.
 | Archivo | Qué demuestra realmente |
 | --- | --- |
 | `RUN.md` | Guion breve, IDs, commits y resultado de cada comprobación. |
+| `01-public-entry.png` | Entrada pública de Domi: una persona sin cuenta puede escribir un vaciado y pedir el resultado. |
 | `03-render-retry.json` | Resumen sanitizado de la API de Render: fallo del intento 1 y recuperación del intento 2 del mismo task run. |
 | `04-research-sources.png` | Producto desplegado: pregunta 1, ocho hallazgos guardados, pregunta 2 y su motivo, guía con citas, incertidumbres y 16 fuentes. |
 | `06-reload-verification.json` | Lectura posterior a la recarga: el mismo run terminó con 6 pasos, 2 preguntas y 16 hallazgos, sin URLs duplicadas. |
