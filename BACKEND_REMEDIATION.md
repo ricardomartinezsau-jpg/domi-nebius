@@ -7,10 +7,11 @@ admisión está **abierta** en `domi-web` y en `domi-research`, y
 incidencia de esquema divergente que este documento registraba queda cerrada; su
 registro se conserva más abajo con la evidencia de cierre.
 
-Lo que este estado todavía **no** acredita: no existe una investigación completa
-ejecutada sobre `4eaba87`. La corrida real más reciente —la última de doce con éxito en
-Render— se ejecutó con `068f08c`. Hasta que el commit vivo tenga una corrida propia, la
-evidencia end-to-end acredita el commit anterior.
+El 13 de septiembre de 2026 Ricardo recorrió el flujo completo en producción sobre ese
+commit y lo dio por bueno: es la primera vez que el recorrido de punta a punta funciona
+sobre el commit desplegado. Esa verificación es del operador y no dejó aquí los
+identificadores ni los registros de la corrida; mostrarla como evidencia ante terceros
+exige recuperarlos del panel de Render.
 
 No se han modificado migraciones históricas, proveedores, modelos ni el esquema de
 producto de `lib/triage.ts`.
@@ -313,10 +314,16 @@ presentes las claves de base, Nebius, Linkup, API de Render y Better Auth, con e
 Workflow responde en decenas de milisegundos, sin TLS y sin error SQL.
 
 Evidencia de ejecución: Render registra doce corridas de investigación con estado de
-éxito. Es el estado de la plataforma, no un juicio sobre la calidad del resultado: el
-falso éxito con cero hallazgos que originó esta remediación también terminó «bien» para
-Render. La más reciente se ejecutó con `068f08c`; **`4eaba87` todavía no tiene corrida
-propia**. Esa es la prueba que falta para acreditar el commit vivo end-to-end.
+éxito, todas con `068f08c`. El estado de plataforma no es un juicio sobre la calidad del
+resultado: el falso éxito con cero hallazgos que originó esta remediación también terminó
+«bien» para Render.
+
+Sobre el commit vivo `4eaba87`, **Ricardo recorrió el flujo completo en producción el 13
+de septiembre de 2026 y lo dio por bueno**. Es la primera vez que el recorrido de punta a
+punta funciona sobre el commit desplegado. Queda registrado como verificación del
+operador: no se archivaron aquí los identificadores de esa corrida ni sus registros, de
+modo que para mostrarla como evidencia ante terceros habría que recuperarlos del panel de
+Render.
 
 `DATABASE_SSL` no está configurada en ninguno de los dos servicios; hoy conectan por la
 red privada de Render sin TLS. Documentado, no bloqueante para este sprint.
