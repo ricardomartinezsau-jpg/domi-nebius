@@ -7,6 +7,14 @@
 - Workflow desplegado al cierre: `domi-research`, versión `5cd6386`, estado `ready`, `main`, `npm install` y `npm run start:workflows`.
 - La corrida de demostración usó la versión `68704cf` —el commit que incorporó el fallo controlado y la ruta de investigación—; el commit actual es su descendiente y sólo añadió limpieza de secretos/encabezados.
 
+## Configuración Render y migración viva
+
+- Web: presentes `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `DATABASE_URL`, `DOMI_ADMISSION_ENABLED=true`, `LINKUP_API_KEY`, `NEBIUS_API_KEY`, `RENDER_API_KEY` y `RENDER_WORKFLOW_SLUG=domi-research`.
+- Workflow: presentes `DATABASE_URL`, `DOMI_ADMISSION_ENABLED`, `LINKUP_API_KEY` y `NEBIUS_API_KEY`. Los valores permanecieron ocultos en la captura del dashboard.
+- La compuerta de demo terminó segura: `DOMI_DEMO_FAULT_ENABLED=false`; el token temporal ya no existe en el web service.
+- Log de arranque de `domi-research`: base de datos alcanzable en 23 ms; no hubo error SQL.
+- Migración `0007_admission_and_execution.sql`: aplicada el `2026-09-13T23:22:14.769Z`, con SHA-256 `9ac762371eb9f637bac8531b1063a6315341cc02f719c5912113886ee441a379`, igual al archivo actual. Las siete columnas nuevas de `runs` y `run_steps.generation` están presentes.
+
 ## Corrida Render + Linkup
 
 - Hora local de inicio: 13 de septiembre, 23:38:50 CDT (UTC `2026-09-14T05:38:50.565Z`).
