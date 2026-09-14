@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 /**
  * Las pruebas que protegen el criterio. Sin red y sin modelo: corren en un segundo.
  * Si una de estas falla, Domi dejó de ser un criterio y pasó a ser una sugerencia.

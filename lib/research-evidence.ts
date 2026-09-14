@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 /** Data supplied by search results is evidence to examine, never instructions. */
 export type StoredFinding = {
   round: number; question: string; claim: string; confidence: string

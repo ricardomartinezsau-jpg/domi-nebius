@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 import { createHash } from 'node:crypto'
 import { transaction, type SqlClient } from './db.ts'
 import { assertAdmission, daily, LIMITS, researchLimits, reserveLimits } from './admission.ts'

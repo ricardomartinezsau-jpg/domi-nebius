@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 /**
  * Pregunta a Nebius Token Factory qué modelos sirve HOY y marca cuáles de
  * nuestros candidatos siguen existiendo.

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 /** UI copy only. User content and saved model results are never translated implicitly. */
 export type Locale = 'en' | 'es'
 export const EN: Record<string, string> = {

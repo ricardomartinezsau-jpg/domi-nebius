@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { transaction, type SqlClient } from './db.ts'
 import { assertAdmission, LIMITS } from './admission.ts'

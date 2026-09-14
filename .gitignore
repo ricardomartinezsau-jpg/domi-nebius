@@ -11,3 +11,24 @@ next-env.d.ts
 
 # OS
 .DS_Store
+
+# Private keys and secrets
+*.pem
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!jsconfig.json
+!next.config.json
+
+# Local databases
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+*.s3db
+*.sl3
+
+# Deployment scripts
+Dockerfile
+docker-compose.yml

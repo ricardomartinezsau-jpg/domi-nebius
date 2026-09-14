@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Domi Nebius. Todos los derechos reservados.
+// Queda prohibida la reproducción, modificación o distribución no autorizada de este código.
+
 import { issueGuest, readGuest, setGuestCookie, mutationBody } from '@/lib/guest'
 import { assertAdmission } from '@/lib/admission'
 import { failureResponse, logFailure, withContext, requestId } from '@/lib/operations'
